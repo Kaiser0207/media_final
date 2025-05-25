@@ -57,6 +57,62 @@ def load_witch_idle_animation(target_width, target_height):
     return frames
 
 
+def load_witch_death_animation(target_width, target_height):
+    """
+    加载女巫死亡动画的精灵图集，并将其切割为单独的帧。
+    Args:
+        target_width (int): 最终缩放后的图片宽度。
+        target_height (int): 最终缩放后的图片高度。
+    Returns:
+        list: 包含所有缩放后动画帧的列表。
+    """
+    death_sprite_sheet_path = "./plays_animation_art/B_witch_death.png"
+    if not os.path.exists(death_sprite_sheet_path):
+        death_sprite_sheet_path = "B_witch_death.png"
+        if not os.path.exists(death_sprite_sheet_path):
+            raise FileNotFoundError(f"女巫死亡动画图片未找到: {death_sprite_sheet_path} 或 ./plays_animation_art/B_witch_death.png")
+
+    death_sprite_sheet = pygame.image.load(death_sprite_sheet_path).convert_alpha()
+    num_death_frames = 10  # 死亡动画帧数
+    death_frame_width = death_sprite_sheet.get_width()
+    death_frame_height = death_sprite_sheet.get_height() // num_death_frames
+
+    frames = []
+    for i in range(6):
+        # 切割出每一帧
+        frame = death_sprite_sheet.subsurface((0, i * death_frame_height, death_frame_width, death_frame_height))
+        # 裁剪掉透明边界
+        crop_rect = frame.get_bounding_rect()
+        cropped = frame.subsurface(crop_rect)
+        # 缩放到目标尺寸
+        scaled_frame = pygame.transform.smoothscale(cropped, (target_width, target_height))
+        frames.append(scaled_frame)
+
+    death_sprite_sheet_path = "./plays_animation_art/B_witch_death.png"
+    if not os.path.exists(death_sprite_sheet_path):
+        death_sprite_sheet_path = "B_witch_death.png"
+        if not os.path.exists(death_sprite_sheet_path):
+            raise FileNotFoundError(f"女巫死亡动画图片未找到: {death_sprite_sheet_path} 或 ./plays_animation_art/B_witch_death.png")
+
+    death_sprite_sheet = pygame.image.load(death_sprite_sheet_path).convert_alpha()
+    num_death_frames = 12  # 死亡动画帧数
+    death_frame_width = death_sprite_sheet.get_width()
+    death_frame_height = death_sprite_sheet.get_height() // num_death_frames
+
+
+    for i in range(num_death_frames):
+        if i > 8:
+            # 切割出每一帧
+            frame = death_sprite_sheet.subsurface((0, i * death_frame_height, death_frame_width, death_frame_height))
+            # 裁剪掉透明边界
+            crop_rect = frame.get_bounding_rect()
+            cropped = frame.subsurface(crop_rect)
+            # 缩放到目标尺寸
+            scaled_frame = pygame.transform.smoothscale(cropped, (target_width, target_height))
+            frames.append(scaled_frame)
+
+    return frames
+
 # 加载骑士的奔跑动画 (保持不变)
 def load_knight_run_animation(target_width, target_height):
     """
@@ -127,4 +183,57 @@ def load_knight_idle_animation(target_width, target_height):
         cropped = frame.subsurface(crop_rect)
         scaled_frame = pygame.transform.smoothscale(cropped, (target_width, target_height))
         frames.append(scaled_frame)
+    return frames
+
+def load_knight_death_animation(target_width, target_height):
+    """
+    Load the knight's death animation from Knight_DEATH.png, slice into frames, crop, and scale
+    while maintaining aspect ratio within the target_width and target_height constraints.
+    """
+    knight_death_sprite_sheet_path = "./plays_animation_art/Knight_DEATH.png"
+    if not os.path.exists(knight_death_sprite_sheet_path):
+        knight_death_sprite_sheet_path = "Knight_DEATH.png"
+        if not os.path.exists(knight_death_sprite_sheet_path):
+            raise FileNotFoundError(f"骑士死亡动画图片未找到: {knight_death_sprite_sheet_path} 或 ./plays_animation_art/Knight_DEATH.png")
+
+    knight_death_sprite_sheet = pygame.image.load(knight_death_sprite_sheet_path).convert_alpha()
+    num_death_frames = 12
+    frame_width = knight_death_sprite_sheet.get_width() // num_death_frames
+    frame_height = knight_death_sprite_sheet.get_height()
+
+    if knight_death_sprite_sheet.get_width() % num_death_frames != 0:
+        print(f"警告：Knight_DEATH.png 的宽度 {knight_death_sprite_sheet.get_width()} 不是帧数 {num_death_frames} 的整数倍，可能导致切割不准确！")
+
+    frames = []
+    for i in range(num_death_frames):
+        frame = knight_death_sprite_sheet.subsurface((i * frame_width, 0, frame_width, frame_height))
+        crop_rect = frame.get_bounding_rect()
+        cropped = frame.subsurface(crop_rect)
+
+        original_cropped_width = cropped.get_width()
+        original_cropped_height = cropped.get_height()
+
+        if original_cropped_width == 0 or original_cropped_height == 0:
+            frames.append(pygame.Surface((target_width, target_height), pygame.SRCALPHA))
+            continue
+
+        width_ratio = target_width / original_cropped_width
+        height_ratio = target_height / original_cropped_height
+
+        scale_ratio = min(width_ratio, height_ratio)
+
+        new_width = int(original_cropped_width * scale_ratio)
+        new_height = int(original_cropped_height * scale_ratio)
+
+        if new_width == 0: new_width = 1
+        if new_height == 0: new_height = 1
+
+        scaled_frame = pygame.transform.smoothscale(cropped, (new_width, new_height))
+
+        final_frame_surface = pygame.Surface((target_width, target_height), pygame.SRCALPHA)
+        blit_x = (target_width - new_width) // 2
+        blit_y = (target_height - new_height) // 2
+        final_frame_surface.blit(scaled_frame, (blit_x, blit_y))
+
+        frames.append(final_frame_surface)
     return frames

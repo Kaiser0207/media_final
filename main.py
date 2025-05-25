@@ -333,9 +333,11 @@ class Player(pygame.sprite.Sprite):
         self.walk_frames = []
         self.idle_frames = []
 
+        # 在Player.__init__中，player_id == 0时加载死亡动画
         if self.player_id == 0:
             self.walk_frames = load_knight_run_animation(target_width=PLAYER_RADIUS * 2,target_height=PLAYER_RADIUS * 2)
             self.idle_frames = load_knight_idle_animation(target_width=PLAYER_RADIUS * 2,target_height=PLAYER_RADIUS * 2)
+            self.death_frames = load_knight_death_animation(target_width=PLAYER_RADIUS * 2,target_height=PLAYER_RADIUS * 2)
             self.is_witch = False
             self.frame_interval = 0.2
             self.idle_frame_interval = 0.3
@@ -343,6 +345,7 @@ class Player(pygame.sprite.Sprite):
             self.is_witch = True
             self.walk_frames = load_witch_run_animation(target_width=PLAYER_RADIUS * 2, target_height=PLAYER_RADIUS * 2)
             self.idle_frames = load_witch_idle_animation(target_width=PLAYER_RADIUS * 2,target_height=PLAYER_RADIUS * 2)
+            self.death_frames = load_witch_death_animation(target_width=PLAYER_RADIUS * 2,target_height=PLAYER_RADIUS * 2)
             self.frame_interval = 0.2
             self.idle_frame_interval = 0.3
 
@@ -398,18 +401,17 @@ class Player(pygame.sprite.Sprite):
         self.original_death_pos_for_shake = None  # Clear shake-related temp state
         self.death_pos = None  # Player is no longer considered "at a death position"
 
+
     def die(self):
-        if self.is_alive:  # Only proceed if player was alive
+        if self.is_alive:
             self.is_alive = False
-            # Guard against re-triggering shake if somehow called multiple times rapidly
             if not self.is_shaking and self.death_pos is None:
-                self.death_pos = self.pos.copy()  # Final resting position after shake
-                self.original_death_pos_for_shake = self.pos.copy()  # Center of shake
-                self.is_shaking = True
-                self.shake_timer = self.shake_duration
-                self._update_dead_image()  # Set the visual to dead sprite
-                # Update rect based on current pos and new dead image
-                self.rect = self.image.get_rect(center=self.pos)
+                self.death_pos = pygame.math.Vector2(self.pos.x, self.pos.y)
+                self.current_frame = 0
+                self.frame_timer = 0
+                self.is_shaking = False
+                self.shake_timer = 0.0
+                self.original_death_pos_for_shake = pygame.math.Vector2(self.pos.x, self.pos.y)
 
     # MODIFIED: update_movement to integrate fruit effects
     def update_movement(self, laser_walls, coop_boxes=None, spike_trap_group=None, meteor_sprites=None,
@@ -432,9 +434,6 @@ class Player(pygame.sprite.Sprite):
                     # else: Error case, death_pos should be set
                 self._update_dead_image()  # Update visual to dead sprite (especially after shake)
             else:  # Not shaking, just dead and static
-                if self.death_pos:
-                    self.pos = self.death_pos  # Ensure pos is synced
-                    self.rect.center = self.death_pos
                 self._update_dead_image()
             return
 
@@ -573,25 +572,33 @@ class Player(pygame.sprite.Sprite):
         self.image = frame
 
     def _update_dead_image(self):
-        """更新死亡狀態的圖片"""
-        # Ensure dead_frames is not empty and current_frame is valid
-        if not self.dead_frames:  # Fallback if dead_frames are not loaded
-            # Create a simple dead image if needed, or handle error
-            # For now, assume dead_frames are always available from walk_frames
-            temp_surface = pygame.Surface((PLAYER_RADIUS * 2, PLAYER_RADIUS * 2))
-            temp_surface.fill(self.dead_color)  # Use the defined dead_color
-            temp_surface.set_alpha(150)  # Make it somewhat transparent
-            self.image = temp_surface
-            if self.facing_left:  # Still apply flip if necessary
-                self.image = pygame.transform.flip(self.image, True, False)
-            return
-
-        # Use the first frame of dead_frames for a static dead appearance
-        # If you want an animated death (beyond shake), this would be more complex
-        frame = self.dead_frames[0]  # Or some other logic for dead sprite
-        if self.facing_left:
-            frame = pygame.transform.flip(frame, True, False)
-        self.image = frame
+        """更新死亡状态的图片"""
+        if self.death_frames:
+            # 死亡动画逐帧播放
+            self.frame_timer += 1 / FPS
+            death_anim_interval = 0.08  # 每帧间隔
+            if self.current_frame < len(self.death_frames) - 1:
+                if self.frame_timer >= death_anim_interval:
+                    self.current_frame += 1
+                    self.frame_timer = 0
+            frame = self.death_frames[self.current_frame]
+            if self.facing_left:
+                frame = pygame.transform.flip(frame, True, False)
+            self.image = frame
+        else:
+            # 无死亡动画时，使用半透明静态帧
+            if not self.dead_frames:
+                temp_surface = pygame.Surface((PLAYER_RADIUS * 2, PLAYER_RADIUS * 2))
+                temp_surface.fill(self.dead_color)
+                temp_surface.set_alpha(150)
+                self.image = temp_surface
+                if self.facing_left:
+                    self.image = pygame.transform.flip(self.image, True, False)
+                return
+            frame = self.dead_frames[0]
+            if self.facing_left:
+                frame = pygame.transform.flip(frame, True, False)
+            self.image = frame
 
     def draw(self, surface):
         surface.blit(self.image, self.rect)
