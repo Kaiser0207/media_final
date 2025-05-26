@@ -113,6 +113,13 @@ def load_witch_death_animation(target_width, target_height):
 
     return frames
 
+def load_witch_revive_animation(target_width, target_height):
+    """
+    Load the witch's revive animation by reversing the death animation frames.
+    """
+    frames = load_witch_death_animation(target_width, target_height)
+    return frames[::-1]
+
 # 加载骑士的奔跑动画 (保持不变)
 def load_knight_run_animation(target_width, target_height):
     """
@@ -237,3 +244,10 @@ def load_knight_death_animation(target_width, target_height):
 
         frames.append(final_frame_surface)
     return frames
+
+def load_knight_revive_animation(target_width, target_height):
+    """
+    Load the knight's revive animation by reversing the death animation frames.
+    """
+    frames = load_knight_death_animation(target_width, target_height)
+    return frames[::-1]
