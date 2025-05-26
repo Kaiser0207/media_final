@@ -1,5 +1,6 @@
 import pygame
 from animations import *
+from boss_entities import ThrowableObject # <--- ADD THIS LINE
 # 如有需要，导入 math、random 及 main.py 里用到的常量
 import random
 
@@ -8,6 +9,12 @@ SCREEN_HEIGHT = 720
 PLAYER_RADIUS = 15
 PLAYER_SPEED = 3
 FPS = 60
+
+# Define new keys if they aren't defined in main.py and passed
+# For P1 (Knight)
+ACTION_KEY_P1 = pygame.K_g  # For pickup/throw by P1
+# For P2 (Witch)
+DRAW_ITEM_KEY_P2 = pygame.K_SEMICOLON  # For "drawing" an item by P2
 
 
 class Player(pygame.sprite.Sprite):
@@ -23,40 +30,41 @@ class Player(pygame.sprite.Sprite):
         self.walk_frames = []
         self.idle_frames = []
         self.death_frames = []
+        self.revive_frames = []  # Added initialization
 
-        if self.player_id == 0:
+        if self.player_id == 0:  # Knight (P1)
             self.walk_frames = Knight_animation.load_knight_run_animation(target_width=PLAYER_RADIUS * 3,
-                                                         target_height=PLAYER_RADIUS * 3)
+                                                                          target_height=PLAYER_RADIUS * 3)
             self.idle_frames = Knight_animation.load_knight_idle_animation(target_width=PLAYER_RADIUS * 3,
-                                                          target_height=PLAYER_RADIUS * 3)
+                                                                           target_height=PLAYER_RADIUS * 3)
             self.death_frames = Knight_animation.load_knight_death_animation(target_width=PLAYER_RADIUS * 3,
-                                                            target_height=PLAYER_RADIUS * 3)
+                                                                             target_height=PLAYER_RADIUS * 3)
             self.revive_frames = Knight_animation.load_knight_revive_animation(target_width=PLAYER_RADIUS * 3,
-                                                              target_height=PLAYER_RADIUS * 3)
+                                                                               target_height=PLAYER_RADIUS * 3)
             self.is_witch = False
-        elif self.player_id == 1:
+        elif self.player_id == 1:  # Witch (P2)
             self.is_witch = True
             self.walk_frames = Witch_animation.load_witch_run_animation(target_width=PLAYER_RADIUS * 3,
-                                                        target_height=PLAYER_RADIUS * 3)
+                                                                        target_height=PLAYER_RADIUS * 3)
             self.idle_frames = Witch_animation.load_witch_idle_animation(target_width=PLAYER_RADIUS * 3,
-                                                         target_height=PLAYER_RADIUS * 3)
+                                                                         target_height=PLAYER_RADIUS * 3)
             self.death_frames = Witch_animation.load_witch_death_animation(target_width=PLAYER_RADIUS * 3,
-                                                           target_height=PLAYER_RADIUS * 3)
+                                                                           target_height=PLAYER_RADIUS * 3)
             self.revive_frames = Witch_animation.load_witch_revive_animation(target_width=PLAYER_RADIUS * 3,
-                                                             target_height=PLAYER_RADIUS * 3)
+                                                                             target_height=PLAYER_RADIUS * 3)
 
         self.frame_interval = 0.2
         self.idle_frame_interval = 0.3
 
-        self.dead_frames = []
-        for frame in self.walk_frames:
-            dead_frame = frame.copy()
-            dead_frame.set_alpha(100)
-            self.dead_frames.append(dead_frame)
+        # self.dead_frames = [] # This was overriding loaded death_frames with transparent walk_frames
+        # for frame in self.walk_frames:
+        #     dead_frame = frame.copy()
+        #     dead_frame.set_alpha(100)
+        #     self.dead_frames.append(dead_frame)
 
         self.current_frame = 0
         self.frame_timer = 0
-        self.image = self.walk_frames[0]
+        self.image = self.walk_frames[0] if self.walk_frames else pygame.Surface([PLAYER_RADIUS * 2, PLAYER_RADIUS * 2])
         self.rect = self.image.get_rect(center=self.pos)
         self.is_alive = True
         self.death_pos = None
@@ -69,56 +77,86 @@ class Player(pygame.sprite.Sprite):
         self.revive_anim_timer = 0.0
         self.revive_anim_frame = 0
 
+        # Boss level attributes
+        self.held_object = None
+        self.can_spawn_item_timer = 0  # Cooldown for P2 spawning items
+        self.item_spawn_cooldown = 3.0  # Seconds
+
     def reset(self):
         self.pos = pygame.math.Vector2(self.start_pos.x, self.start_pos.y)
         self.is_alive = True
         self.death_pos = None
-        self.image = self.walk_frames[0]
+        self.image = self.walk_frames[0] if self.walk_frames else pygame.Surface([PLAYER_RADIUS * 2, PLAYER_RADIUS * 2])
         self.rect = self.image.get_rect(center=self.pos)
         self.current_frame = 0
 
-        # Reset shake attributes
         self.is_shaking = False
         self.shake_timer = 0.0
         self.original_death_pos_for_shake = None
         self.is_reviving = False
         self.revive_anim_timer = 0.0
+        self.facing_left = False
+        self.is_reviving = False
         self.revive_anim_frame = 0
+        self.held_object = None
+        self.can_spawn_item_timer = 0
 
     def revive(self):
         self.is_alive = True
         if self.death_pos:
-            self.pos = pygame.math.Vector2(self.death_pos.x, self.death_pos.y)  # Revive at final death position
-        else:  # Fallback if revived without a specific death_pos (e.g. game reset)
+            self.pos = pygame.math.Vector2(self.death_pos.x, self.death_pos.y)
+        else:
             self.pos = pygame.math.Vector2(self.start_pos.x, self.start_pos.y)
 
         self.rect.center = self.pos
-        # 啟動復活動畫
         self.is_reviving = True
         self.revive_anim_timer = 0.0
         self.revive_anim_frame = 0
-        self.current_frame = 0  # Reset animation frame
+        self.current_frame = 0
 
-        self.is_shaking = False  # Crucial: stop shaking if revived
+        self.is_shaking = False
         self.shake_timer = 0.0
-        self.original_death_pos_for_shake = None  # Clear shake-related temp state
-        self.death_pos = None  # Player is no longer considered "at a death position"
+        self.original_death_pos_for_shake = None
+        self.death_pos = None
+        self.held_object = None  # Drop object on revive
 
-    def die(self):
+    def die(self, start_shake=True):  # Added optional shake parameter
         if self.is_alive:
             self.is_alive = False
-            if not self.is_shaking and self.death_pos is None:
+            if self.held_object:  # Drop object if holding one
+                self.held_object.is_held = False
+                self.held_object.held_by_player_id = None
+                self.held_object = None
+
+            # Store current position as death_pos if not already shaking from a previous death event
+            if not self.is_shaking and self.death_pos is None:  # and not self.original_death_pos_for_shake
                 self.death_pos = pygame.math.Vector2(self.pos.x, self.pos.y)
-                self.current_frame = 0
-                self.frame_timer = 0
-                self.is_shaking = False
-                self.shake_timer = 0.0
                 self.original_death_pos_for_shake = pygame.math.Vector2(self.pos.x, self.pos.y)
 
-    # MODIFIED: update_movement to integrate fruit effects
+            self.current_frame = 0  # Reset for death animation
+            self.frame_timer = 0
+
+            if start_shake:  # Start shake only if specified (e.g. hit by projectile)
+                self.is_shaking = True
+                self.shake_timer = self.shake_duration
+                if not self.original_death_pos_for_shake:  # Ensure this is set if shaking starts
+                    self.original_death_pos_for_shake = pygame.math.Vector2(self.pos.x, self.pos.y)
+            else:  # If no shake, ensure static death pos
+                self.is_shaking = False
+                if not self.death_pos: self.death_pos = self.pos  # Fallback
+                self.pos = self.death_pos
+                self.rect.center = self.death_pos
+
+    def update_boss_interactions(self, dt):
+        if self.player_id == 1:  # P2 (Witch)
+            if self.can_spawn_item_timer > 0:
+                self.can_spawn_item_timer -= dt
+
+    # Player.py
     def update_movement(self, laser_walls, coop_boxes=None, spike_trap_group=None, meteor_sprites=None,
-                        effect_manager=None, dt=0.016):
-        # 復活動畫播放時，僅播放動畫，不響應操作
+                        effect_manager=None, dt=0.016,
+                        # Boss level specific arguments
+                        boss_entity=None, boss_projectiles=None, throwable_objects_group=None):
         if self.is_reviving:
             if self.revive_frames:
                 revive_anim_interval = 0.08
@@ -129,7 +167,7 @@ class Player(pygame.sprite.Sprite):
                 if self.revive_anim_frame >= len(self.revive_frames):
                     self.is_reviving = False
                     self.revive_anim_frame = 0
-                    self.image = self.walk_frames[0]
+                    self.image = self.walk_frames[0] if self.walk_frames else self.image  # Fallback
                     self.current_frame = 0
                 else:
                     frame = self.revive_frames[self.revive_anim_frame]
@@ -137,7 +175,6 @@ class Player(pygame.sprite.Sprite):
                         frame = pygame.transform.flip(frame, True, False)
                     self.image = frame
             else:
-                # 沒有復活動畫則直接結束
                 self.is_reviving = False
             return
 
@@ -147,24 +184,25 @@ class Player(pygame.sprite.Sprite):
                 if self.shake_timer > 0 and self.original_death_pos_for_shake:
                     offset_x = random.uniform(-self.shake_magnitude, self.shake_magnitude)
                     offset_y = random.uniform(-self.shake_magnitude, self.shake_magnitude)
-                    self.rect.centerx = self.original_death_pos_for_shake.x + offset_x
-                    self.rect.centery = self.original_death_pos_for_shake.y + offset_y
-                    # self.pos should remain self.original_death_pos_for_shake
-                else:  # Shake ended
+                    # Death animation should play based on self.current_frame updated in _update_dead_image
+                    # The rect position is jittered, but self.pos remains the original death spot.
+                    temp_shake_pos_x = self.original_death_pos_for_shake.x + offset_x
+                    temp_shake_pos_y = self.original_death_pos_for_shake.y + offset_y
+                    self.rect.center = (temp_shake_pos_x, temp_shake_pos_y)
+                else:
                     self.is_shaking = False
                     self.shake_timer = 0.0
-                    if self.death_pos:  # Snap to final death position
-                        self.pos = self.death_pos
+                    if self.death_pos:  # Snap visual rect to logical death position
                         self.rect.center = self.death_pos
-                    # else: Error case, death_pos should be set
-                self._update_dead_image()  # Update visual to dead sprite (especially after shake)
-            else:  # Not shaking, just dead and static
-                self._update_dead_image()
+                    # self.pos remains self.original_death_pos_for_shake or self.death_pos
+                self._update_dead_image(dt)  # Pass dt for timed animation
+            else:
+                if self.death_pos: self.rect.center = self.death_pos  # Ensure rect is at final death pos
+                self._update_dead_image(dt)  # Pass dt for timed animation
             return
 
         keys = pygame.key.get_pressed()
         movement_vector = pygame.math.Vector2(0, 0)
-
         mirror_active = effect_manager and effect_manager.is_mirror_active(self.player_id)
 
         up_key_actual = self.control_keys['down'] if mirror_active else self.control_keys['up']
@@ -177,84 +215,86 @@ class Player(pygame.sprite.Sprite):
         if keys[left_key_actual]: movement_vector.x = -1
         if keys[right_key_actual]: movement_vector.x = 1
 
-        # Determine facing direction based on NON-MIRRORED input for animation
         if keys[self.control_keys['left']]:
             self.facing_left = True
         elif keys[self.control_keys['right']]:
             self.facing_left = False
 
         is_moving = movement_vector.length_squared() > 0
-
         if is_moving:
             movement_vector.normalize_ip()
             movement_vector *= PLAYER_SPEED
 
         tentative_pos = self.pos + movement_vector
-
-        # Store original rect for collision detection before moving
         original_rect = self.rect.copy()
-
-        # Tentative rects for X and Y movement
         temp_rect_x = original_rect.copy()
         temp_rect_x.centerx = tentative_pos.x
-
         temp_rect_y = original_rect.copy()
         temp_rect_y.centery = tentative_pos.y
 
+        # --- Standard Obstacle Collisions ---
         # Laser Wall Collision
-        # Walls are always collidable. Their visual appearance is handled by alpha.
-        collided_with_laser = False
-        for lw in laser_walls:  # laser_walls is the sprite group
-            if temp_rect_x.colliderect(lw.rect):
-                movement_vector.x = 0
-                if not original_rect.colliderect(lw.rect):
+        if laser_walls:  # Check if laser_walls is not None (for boss level)
+            collided_with_laser = False
+            for lw in laser_walls:
+                if temp_rect_x.colliderect(lw.rect) and (
+                        not original_rect.colliderect(lw.rect) or movement_vector.x != 0):
+                    movement_vector.x = 0;
                     collided_with_laser = True;
                     break
-            if temp_rect_y.colliderect(lw.rect):  # Check Y collision separately
-                movement_vector.y = 0
-                if not original_rect.colliderect(lw.rect):
+                if temp_rect_y.colliderect(lw.rect) and (
+                        not original_rect.colliderect(lw.rect) or movement_vector.y != 0):
+                    movement_vector.y = 0;
                     collided_with_laser = True;
                     break
-        if collided_with_laser:
-            self.die()
-            return
+            if collided_with_laser:
+                self.die(start_shake=False);
+                return  # No shake for wall collision
 
-        # Update tentative_pos based on adjusted movement_vector (if hit laser)
-        tentative_pos = self.pos + movement_vector
+        tentative_pos = self.pos + movement_vector  # Re-evaluate tentative_pos
         temp_rect_x.centerx = tentative_pos.x
         temp_rect_y.centery = tentative_pos.y
 
         # Coop Box Collision
         if coop_boxes:
             for box in coop_boxes:
-                if temp_rect_x.colliderect(box.rect):
-                    movement_vector.x = 0
-                if temp_rect_y.colliderect(box.rect):  # Check against the original Y rect if X was blocked
-                    movement_vector.y = 0
+                if temp_rect_x.colliderect(box.rect): movement_vector.x = 0
+                if temp_rect_y.colliderect(box.rect): movement_vector.y = 0
 
-        # Update tentative_pos again
         tentative_pos = self.pos + movement_vector
-        # Create a final tentative rect for spike and meteor collision
-        final_tentative_rect = self.rect.copy()
+        final_tentative_rect = self.rect.copy();
         final_tentative_rect.center = tentative_pos
 
         # Spike Trap Collision
         if spike_trap_group:
             for spike in spike_trap_group:
-                # Player attempts to move into the spike's area
                 if spike.is_dangerous() and final_tentative_rect.colliderect(spike.rect):
-                    # Death should occur at self.pos (position *before* moving into spike)
-                    self.die()
-                    return  # Exit update_movement
+                    self.die(start_shake=False);
+                    return
 
         # Meteor Collision
         if meteor_sprites:
             for meteor in meteor_sprites:
-                # Player attempts to move into the meteor's area
                 if final_tentative_rect.colliderect(meteor.rect):
-                    # Death should occur at self.pos (position *before* moving into meteor)
-                    self.die()
-                    return  # Exit update_movement
+                    self.die(start_shake=True);
+                    return  # Meteors cause shake
+
+        # --- Boss Level Specific Collisions ---
+        if boss_entity and boss_entity.current_health > 0:  # If boss is active
+            # Player vs Boss direct collision (optional - make boss solid)
+            if final_tentative_rect.colliderect(boss_entity.rect):
+                # Simple bounce back
+                if temp_rect_x.colliderect(boss_entity.rect): movement_vector.x = 0
+                if temp_rect_y.colliderect(boss_entity.rect): movement_vector.y = 0
+                # Or player takes damage/dies
+                # self.die(start_shake=True); return
+
+        if boss_projectiles:  # Collision with boss projectiles
+            for proj in boss_projectiles:
+                if final_tentative_rect.colliderect(proj.rect):
+                    self.die(start_shake=True)  # Player dies if hit by boss projectile
+                    proj.kill()  # Remove projectile
+                    return  # Stop further updates this frame
 
         # Final position update
         self.pos += movement_vector
@@ -262,29 +302,27 @@ class Player(pygame.sprite.Sprite):
         self.pos.y = max(self.rect.height // 2, min(self.pos.y, SCREEN_HEIGHT - self.rect.height // 2))
         self.rect.center = self.pos
 
-        self._update_alive_image(is_moving)
+        # Update held object's position if any
+        if self.held_object:
+            self.held_object.update(dt, self.pos, self.facing_left)
 
-    def _update_alive_image(self, is_moving):
-        """更新存活狀態的圖片"""
-        # keys = pygame.key.get_pressed() # facing_left is now handled in update_movement
-        # if keys[self.control_keys['left']]: self.facing_left = True
-        # elif keys[self.control_keys['right']]: self.facing_left = False
+        self._update_alive_image(is_moving, dt)  # Pass dt for timed animation
 
+    def _update_alive_image(self, is_moving, dt):  # Added dt
         if is_moving:
-            self.frame_timer += 1 / FPS
+            self.frame_timer += dt  # Use dt
             if self.frame_timer >= self.frame_interval:
-                self.current_frame = (self.current_frame + 1) % len(self.walk_frames)
+                self.current_frame = (self.current_frame + 1) % (len(self.walk_frames) if self.walk_frames else 1)
                 self.frame_timer = 0
-            frame = self.walk_frames[self.current_frame]
+            frame = self.walk_frames[self.current_frame] if self.walk_frames else self.image
         else:
             if not self.idle_frames:
-                frame = self.walk_frames[0]
+                frame = self.walk_frames[0] if self.walk_frames else self.image
                 self.current_frame = 0
             else:
-                if self.current_frame >= len(self.idle_frames):  # Reset if switched from walk
+                if self.current_frame >= len(self.idle_frames):
                     self.current_frame = 0
-                self.frame_timer += 1 / FPS
-                # Ensure idle_frame_interval is defined, otherwise use frame_interval
+                self.frame_timer += dt  # Use dt
                 current_idle_interval = getattr(self, 'idle_frame_interval', self.frame_interval)
                 if self.frame_timer >= current_idle_interval:
                     self.current_frame = (self.current_frame + 1) % len(self.idle_frames)
@@ -293,33 +331,63 @@ class Player(pygame.sprite.Sprite):
 
         if self.facing_left:
             frame = pygame.transform.flip(frame, True, False)
-
         self.image = frame
 
-    def _update_dead_image(self):
-        """更新死亡状态的图片"""
+    def _update_dead_image(self, dt):  # Added dt
         if self.death_frames:
-            # 死亡动画逐帧播放
-            self.frame_timer += 1 / FPS
-            death_anim_interval = 0.08  # 每帧间隔
+            death_anim_interval = 0.08
+            self.frame_timer += dt  # Use dt
+
+            # Only advance frame if animation is not finished
             if self.current_frame < len(self.death_frames) - 1:
                 if self.frame_timer >= death_anim_interval:
                     self.current_frame += 1
                     self.frame_timer = 0
-            frame = self.death_frames[self.current_frame]
+
+            frame_to_draw = self.death_frames[self.current_frame]
             if self.facing_left:
-                frame = pygame.transform.flip(frame, True, False)
-            self.image = frame
+                frame_to_draw = pygame.transform.flip(frame_to_draw, True, False)
+            self.image = frame_to_draw
+        # else: # Fallback if no death frames (e.g. use dead_color)
+        # pass # Current implementation relies on death_frames
 
-    def draw(self, surface):
+    def draw(self, surface):  # Mostly for debug, sprite groups handle drawing
         surface.blit(self.image, self.rect)
+        # If holding an object, it's drawn by its own group or after players.
 
-    def _make_grayscale(self, surface):  # Keep this utility if needed elsewhere
-        grayscale_surface = surface.copy()
-        arr = pygame.surfarray.pixels3d(grayscale_surface)
-        gray = (arr[:, :, 0] * 0.299 + arr[:, :, 1] * 0.587 + arr[:, :, 2] * 0.114).astype(arr.dtype)
-        arr[:, :, 0] = gray
-        arr[:, :, 1] = gray
-        arr[:, :, 2] = gray
-        del arr
-        return grayscale_surface
+    # --- Boss Level Specific Actions ---
+    def handle_action_key(self, throwable_objects_group):
+        if self.player_id == 0 and self.is_alive:  # P1 (Knight) handles pickup/throw
+            if self.held_object:
+                # Throw object
+                throw_dir = pygame.math.Vector2(1, -0.5) if not self.facing_left else pygame.math.Vector2(-1, -0.5)
+                self.held_object.throw(throw_dir.normalize())
+                # self.held_object.pos = self.pos + (throw_dir.normalize() * PLAYER_RADIUS * 2) # Move it out slightly
+                self.held_object.rect.center = self.held_object.pos
+                if self.held_object not in throwable_objects_group:  # Ensure it's in the group to be updated/drawn
+                    throwable_objects_group.add(self.held_object)
+                self.held_object = None
+            else:
+                # Try to pick up an object
+                for obj in throwable_objects_group:
+                    if not obj.is_held and self.rect.colliderect(obj.rect.inflate(20, 20)):  # Check wider radius
+                        self.held_object = obj
+                        obj.pickup(self.player_id)
+                        # throwable_objects_group.remove(obj) # Remove from group while held, or just flag
+                        break
+        return None  # No object spawned here
+
+    def handle_draw_item_key(self, throwable_objects_group, other_player_pos):  # P2 (Witch)
+        if self.player_id == 1 and self.is_alive and self.can_spawn_item_timer <= 0:
+            self.can_spawn_item_timer = self.item_spawn_cooldown  # Reset cooldown
+            # Spawn item near P1 (other_player_pos) or a fixed spot
+            spawn_x = other_player_pos.x + random.randint(-PLAYER_RADIUS * 2, PLAYER_RADIUS * 2)
+            spawn_y = other_player_pos.y - PLAYER_RADIUS  # Slightly above P1
+
+            spawn_x = max(PLAYER_RADIUS, min(spawn_x, SCREEN_WIDTH - PLAYER_RADIUS))
+            spawn_y = max(PLAYER_RADIUS, min(spawn_y, SCREEN_HEIGHT - PLAYER_RADIUS))
+
+            new_obj = ThrowableObject(spawn_x, spawn_y, self.player_id) #
+            throwable_objects_group.add(new_obj)
+            return new_obj  # Return the spawned object
+        return None
