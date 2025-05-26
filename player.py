@@ -25,24 +25,24 @@ class Player(pygame.sprite.Sprite):
         self.death_frames = []
 
         if self.player_id == 0:
-            self.walk_frames = load_knight_run_animation(target_width=PLAYER_RADIUS * 3,
+            self.walk_frames = Knight_animation.load_knight_run_animation(target_width=PLAYER_RADIUS * 3,
                                                          target_height=PLAYER_RADIUS * 3)
-            self.idle_frames = load_knight_idle_animation(target_width=PLAYER_RADIUS * 3,
+            self.idle_frames = Knight_animation.load_knight_idle_animation(target_width=PLAYER_RADIUS * 3,
                                                           target_height=PLAYER_RADIUS * 3)
-            self.death_frames = load_knight_death_animation(target_width=PLAYER_RADIUS * 3,
+            self.death_frames = Knight_animation.load_knight_death_animation(target_width=PLAYER_RADIUS * 3,
                                                             target_height=PLAYER_RADIUS * 3)
-            self.revive_frames = load_knight_revive_animation(target_width=PLAYER_RADIUS * 3,
+            self.revive_frames = Knight_animation.load_knight_revive_animation(target_width=PLAYER_RADIUS * 3,
                                                               target_height=PLAYER_RADIUS * 3)
             self.is_witch = False
         elif self.player_id == 1:
             self.is_witch = True
-            self.walk_frames = load_witch_run_animation(target_width=PLAYER_RADIUS * 3,
+            self.walk_frames = Witch_animation.load_witch_run_animation(target_width=PLAYER_RADIUS * 3,
                                                         target_height=PLAYER_RADIUS * 3)
-            self.idle_frames = load_witch_idle_animation(target_width=PLAYER_RADIUS * 3,
+            self.idle_frames = Witch_animation.load_witch_idle_animation(target_width=PLAYER_RADIUS * 3,
                                                          target_height=PLAYER_RADIUS * 3)
-            self.death_frames = load_witch_death_animation(target_width=PLAYER_RADIUS * 3,
+            self.death_frames = Witch_animation.load_witch_death_animation(target_width=PLAYER_RADIUS * 3,
                                                            target_height=PLAYER_RADIUS * 3)
-            self.revive_frames = load_witch_revive_animation(target_width=PLAYER_RADIUS * 3,
+            self.revive_frames = Witch_animation.load_witch_revive_animation(target_width=PLAYER_RADIUS * 3,
                                                              target_height=PLAYER_RADIUS * 3)
 
         self.frame_interval = 0.2
