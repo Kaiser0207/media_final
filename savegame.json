@@ -1,9 +1,9 @@
 {
-    "current_level_index": 0,
-    "game_state_on_save": 0,
+    "current_level_index": 2,
+    "game_state_on_save": 5,
     "player1": {
         "pos_x": 100.0,
-        "pos_y": 360.0,
+        "pos_y": 620.0,
         "is_alive": true,
         "facing_left": false,
         "death_pos_x": null,
@@ -11,8 +11,8 @@
         "held_object_info": null
     },
     "player2": {
-        "pos_x": 150.0,
-        "pos_y": 414.0,
+        "pos_x": 156.0,
+        "pos_y": 620.0,
         "is_alive": true,
         "facing_left": false,
         "death_pos_x": null,
@@ -42,16 +42,20 @@
             }
         }
     },
-    "boss_level_data": null,
+    "boss_level_data": {
+        "boss_current_health": 100,
+        "boss_pos_x": 540.0,
+        "boss_pos_y": 180.0,
+        "boss_movement_mode": "simple_four_way",
+        "boss_move_timer": 1.0300000000000007,
+        "boss_current_direction_x": 0.0,
+        "boss_current_direction_y": 0.0,
+        "boss_teleport_timer": 0,
+        "boss_is_teleporting_warning": false,
+        "boss_teleport_target_pos_x": null,
+        "boss_teleport_target_pos_y": null,
+        "boss_attack_timer": 1.0300000000000007
+    },
     "throwable_objects": [],
-    "coop_boxes": [
-        {
-            "pos_x": 270.0,
-            "pos_y": 180.0
-        },
-        {
-            "pos_x": 320.0,
-            "pos_y": 230.0
-        }
-    ]
+    "coop_boxes": []
 }

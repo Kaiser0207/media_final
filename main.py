@@ -28,6 +28,14 @@ GOAL_P2_COLOR = (255, 100, 100)
 TEXT_COLOR = (200, 200, 200)
 REVIVE_PROMPT_COLOR = (50, 200, 50)
 COOP_BOX_COLOR = (180, 140, 0)
+SCORE_FRUIT_COLOR = (255, 223, 0)
+SCORE_FRUIT_VALUE = 1
+MAX_TOTAL_SCORE = 3
+
+LEADERBOARD_FILE = "leaderboard.json"
+MAX_LEADERBOARD_ENTRIES = 10 # Show top 10
+FACE_IMAGE_SAVE_DIR = "CatchFace"
+LEADERBOARD_FACE_SIZE = (60, 60)
 
 # 玩家參數
 CHAIN_MAX_LENGTH = 400
@@ -53,6 +61,9 @@ STATE_LEVEL_COMPLETE = 2  # No longer used directly for "all levels", see PRE_BO
 STATE_PRE_BOSS_COMPLETE = 3  # This state will no longer be actively used for a waiting screen
 STATE_BOSS_LEVEL = 5  # New state for Boss Level
 STATE_BOSS_DEFEATED = 6  # New state for when Boss is defeated
+STATE_ASK_CAMERA = 9
+STATE_CAMERA_INPUT = 7
+STATE_SHOW_LEADERBOARD = 8
 
 # --- 果實相關常數 ---
 FRUIT_RADIUS = 15  #
@@ -81,6 +92,8 @@ pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("雙人合作遊戲 Demo - 果實能力 & Boss")  # Updated Caption
 clock = pygame.time.Clock()
+if not os.path.exists(FACE_IMAGE_SAVE_DIR):
+    os.makedirs(FACE_IMAGE_SAVE_DIR)
 
 # --- 音樂檔案路徑 ---
 LEVEL_1_MUSIC = os.path.join("game_music", "04 - Silent Forest.mp3")
@@ -130,12 +143,30 @@ paint_surface_width = 400  #
 paint_surface_height = 300  #
 paint_surface = np.zeros((paint_surface_height, paint_surface_width, 3), dtype=np.uint8) + 200  #
 
+# --- Global game variables ---
+game_time_elapsed = 0.0
+current_score = 0
+leaderboard_data = []
+
+# Variables for camera input state
+camera_capture_active = False
+player_name_input_active = False
+current_player_name = ""
+captured_face_image_path = None # Stores path of the latest capture for current entry
+final_game_time = 0.0
+final_player_score = 0
+photo_taken_prompt_active = False # After a photo is taken, ask what to do next.
+
+# OpenCV related
+cap = None
+face_cascade = None
+camera_frame_surface = None # Pygame surface for camera feed
+loaded_face_images_cache = {} # Cache for loaded face images for leaderboard
 
 def show_opencv_paint_window():  #
     if use_opencv:
         cv2.imshow(opencv_window_name, paint_surface)
         key = cv2.waitKey(1) & 0xFF
-
 
 # --- 果實類別 --- (Copied from original)
 class Fruit(pygame.sprite.Sprite):  #
@@ -149,12 +180,13 @@ class Fruit(pygame.sprite.Sprite):  #
             color = INVISIBLE_WALL_COLOR
         elif fruit_type == "volcano":
             color = VOLCANO_FRUIT_COLOR
+        elif fruit_type == "score":
+            color = SCORE_FRUIT_COLOR
         else:
             color = (255, 255, 255)
         pygame.draw.circle(self.image, color, (FRUIT_RADIUS, FRUIT_RADIUS), FRUIT_RADIUS)
         pygame.draw.circle(self.image, WHITE, (FRUIT_RADIUS, FRUIT_RADIUS), FRUIT_RADIUS, 2)
         self.rect = self.image.get_rect(center=(x, y))
-
 
 # --- 流星類別 (火山爆發效果) --- (Copied from original)
 class Meteor(pygame.sprite.Sprite):  #
@@ -171,7 +203,6 @@ class Meteor(pygame.sprite.Sprite):  #
     def update(self, dt):
         self.timer += dt
         if self.timer >= self.lifetime: self.kill()
-
 
 # --- 警告標記類別 --- (Copied from original)
 class Warning(pygame.sprite.Sprite):  #
@@ -194,7 +225,6 @@ class Warning(pygame.sprite.Sprite):  #
             self.kill()
             return True  # Indicate meteor should spawn
         return False
-
 
 # --- 效果管理器 --- (Copied from original)
 class EffectManager:  #
@@ -293,7 +323,6 @@ class EffectManager:  #
             if data["active"]: info.append(f"{data['name']}: {data['timer']:.1f}s")
         return info
 
-
 # --- 牆壁類別 (雷射牆壁) --- (Copied from original)
 class LaserWall(pygame.sprite.Sprite):  #
     def __init__(self, x, y, width, height):
@@ -310,7 +339,6 @@ class LaserWall(pygame.sprite.Sprite):  #
             self._current_alpha = alpha_value
             self.image.fill(
                 (self.original_color[0], self.original_color[1], self.original_color[2], self._current_alpha))
-
 
 # --- 目標類別 (顏色地板) --- (Copied from original)
 class Goal(pygame.sprite.Sprite):  #
@@ -331,7 +359,6 @@ class Goal(pygame.sprite.Sprite):  #
     def draw(self, surface):
         surface.blit(self.image, self.rect)
         if self.is_active: pygame.draw.rect(surface, WHITE, self.rect, 3)
-
 
 # --- 協力推箱子類別 --- (Copied from original)
 class CoopBox(pygame.sprite.Sprite):  #
@@ -360,7 +387,6 @@ class CoopBox(pygame.sprite.Sprite):  #
 
     def draw(self, surface):
         img_rect = self.image.get_rect(center=self.rect.center); surface.blit(self.image, img_rect)
-
 
 # ---地刺類別--- (Copied from original)
 class SpikeTrap(pygame.sprite.Sprite):  #
@@ -392,7 +418,6 @@ class SpikeTrap(pygame.sprite.Sprite):  #
             surface.blit(pygame.transform.scale(current_img, (self.rect.width, self.rect.height)), self.rect)
         else:
             pygame.draw.rect(surface, DANGER_COLOR if self.active else SAFE_COLOR, self.rect)
-
 
 # --- 關卡資料 ---
 levels_data = [  #
@@ -456,10 +481,170 @@ goal2 = Goal(0, 0, GOAL_P2_COLOR, 1)  #
 effect_manager = EffectManager()  #
 boss_enemy = None  # Will be initialized for boss level
 
+def load_leaderboard():
+    global leaderboard_data, loaded_face_images_cache
+    loaded_face_images_cache.clear() # Clear cache when reloading leaderboard
+    try:
+        with open(LEADERBOARD_FILE, 'r') as f:
+            leaderboard_data = json.load(f)
+    except FileNotFoundError:
+        leaderboard_data = []
+    except json.JSONDecodeError:
+        leaderboard_data = []
+        print(f"Warning: {LEADERBOARD_FILE} is corrupted or invalid. Starting with an empty leaderboard.")
+
+def save_leaderboard():
+    global leaderboard_data
+    leaderboard_data.sort(key=lambda x: (x.get('time', float('inf')), -x.get('score', 0)))
+    leaderboard_data = leaderboard_data[:MAX_LEADERBOARD_ENTRIES]
+    try:
+        with open(LEADERBOARD_FILE, 'w') as f:
+            json.dump(leaderboard_data, f, indent=4)
+    except Exception as e:
+        print(f"Error saving leaderboard: {e}")
+
+def add_leaderboard_entry(name, time_val, score_val, image_path):
+    global leaderboard_data
+    # Prevent duplicate entries for the same play session if user re-captures for same name
+    # This simple add just appends; more sophisticated logic could update an existing entry
+    # if player chose to "change name" and re-captured.
+    # For this flow, each successful capture flow adds a new potential entry.
+    leaderboard_data.append({
+        "name": name,
+        "time": round(time_val, 2), # Store time with 2 decimal places
+        "score": score_val,
+        "face_image_path": image_path
+    })
+
+load_leaderboard() # Load at game start
+
+def initialize_camera_for_capture():
+    global cap, face_cascade, camera_capture_active, game_state
+    if cap and cap.isOpened(): # Already initialized and open
+        camera_capture_active = True # Ensure flag is set
+        return
+
+    try:
+        pictPath = cv2.data.haarcascades + 'haarcascade_frontalface_alt2.xml'
+        if not os.path.exists(pictPath):
+            print(f"錯誤：找不到 Haar cascade 檔案於 {pictPath}")
+            game_state = STATE_SHOW_LEADERBOARD
+            return
+
+        face_cascade = cv2.CascadeClassifier(pictPath)
+        if face_cascade.empty():
+            print("錯誤：無法載入 Haar cascade。")
+            game_state = STATE_SHOW_LEADERBOARD
+            return
+
+        cap = cv2.VideoCapture(0)
+        if not cap.isOpened():
+            print("錯誤：無法開啟攝影機。")
+            cap = None
+            game_state = STATE_SHOW_LEADERBOARD
+            return
+        camera_capture_active = True
+        print("攝影機已初始化。")
+    except Exception as e:
+        print(f"攝影機初始化時發生例外狀況：{e}")
+        release_camera_resources()
+        game_state = STATE_SHOW_LEADERBOARD
+
+def release_camera_resources():
+    global cap, camera_capture_active, camera_frame_surface
+    if cap:
+        cap.release()
+        cap = None
+    camera_capture_active = False
+    camera_frame_surface = None
+    cv2.destroyAllWindows() # Ensure any OpenCV windows are closed
+    print("攝影機資源已釋放。")
+
+def process_camera_frame():
+    global cap, face_cascade, camera_frame_surface, game_state # Added game_state
+    if not camera_capture_active or not cap or not cap.isOpened() or not face_cascade:
+        return
+
+    ret, frame_bgr = cap.read()
+    if not ret:
+        print("錯誤：無法從攝影機讀取畫面。")
+        release_camera_resources()
+        game_state = STATE_SHOW_LEADERBOARD # Fallback if camera fails
+        return
+
+    frame_bgr = cv2.flip(frame_bgr, 1) # Mirror
+    gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
+
+    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60))
+
+    # Create a copy for drawing rectangles, so original frame for Pygame is clean until faces are drawn on it
+    display_frame_bgr = frame_bgr.copy()
+    for (x, y, w, h) in faces:
+        cv2.rectangle(display_frame_bgr, (x, y), (x + w, y + h), (0, 255, 0), 2) # Green rectangle
+
+    frame_rgb = cv2.cvtColor(display_frame_bgr, cv2.COLOR_BGR2RGB)
+
+    target_width, target_height = min(640, SCREEN_WIDTH - 100), min(480, SCREEN_HEIGHT - 200)
+    frame_resized = cv2.resize(frame_rgb, (target_width, target_height))
+
+    temp_surface = pygame.surfarray.make_surface(frame_resized)
+    camera_frame_surface = pygame.transform.rotate(temp_surface, -90)
+
+def handle_photo_capture():
+    global cap, face_cascade, current_player_name, captured_face_image_path, photo_taken_prompt_active
+    global final_game_time, final_player_score  # Make sure these are accessible
+
+    if not camera_capture_active or not cap or not cap.isOpened() or not face_cascade:
+        return False
+
+    ret, frame_bgr = cap.read()
+    if not ret:
+        print("拍照錯誤：無法讀取畫面。")
+        return False
+    frame_bgr = cv2.flip(frame_bgr, 1)  # Ensure consistent orientation with preview
+
+    gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
+    # gray = cv2.equalizeHist(gray)
+
+    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60))
+
+    if len(faces) > 0:
+        x, y, w, h = faces[0]  # Capture the first detected face
+        face_crop = frame_bgr[y:y + h, x:x + w]
+        face_resize = cv2.resize(face_crop, LEADERBOARD_FACE_SIZE)
+
+        # Sanitize player name for filename
+        sane_name = "".join(c if c.isalnum() else "_" for c in current_player_name.strip())
+        if not sane_name: sane_name = "player"  # Default if name was all symbols
+
+        index = 1
+        base_filename = os.path.join(FACE_IMAGE_SAVE_DIR, f"{sane_name}_{{}}.jpg")
+        filename_to_save = base_filename.format(index)
+        while os.path.exists(filename_to_save):
+            index += 1
+            filename_to_save = base_filename.format(index)
+
+        try:
+            cv2.imwrite(filename_to_save, face_resize)
+            captured_face_image_path = filename_to_save  # Store for current entry
+            print(f"臉部影像已儲存至 {filename_to_save}")
+
+            # Add to leaderboard data (will be saved when user is 'Done')
+            add_leaderboard_entry(current_player_name, final_game_time, final_player_score, captured_face_image_path)
+            # save_leaderboard() # Save can be deferred until player is fully done with captures
+
+            photo_taken_prompt_active = True  # Show the "continue?" prompt
+            return True
+        except Exception as e:
+            print(f"儲存影像時發生錯誤: {e}")
+            return False
+    else:
+        print("未偵測到臉部以進行拍照。")
+        return False
 
 # --- Boss Level Setup Function ---
 def setup_boss_level():
-    global boss_enemy, game_state
+    global boss_enemy, game_state, game_time_elapsed
     # 播放Boss關卡音樂
     play_music(BOSS_MUSIC)
     # Clear regular level sprites if any could persist (though load_level should handle most)
@@ -471,9 +656,7 @@ def setup_boss_level():
     meteor_sprites.empty()
     warning_sprites.empty()
     throwable_objects_group.empty()  # Clear any previous throwable items
-
     effect_manager.reset_all_effects()  # Reset any active fruit effects
-
     # Reset players to starting positions for boss arena
     player1.start_pos = pygame.math.Vector2(100, SCREEN_HEIGHT - 100)
     player2.start_pos = pygame.math.Vector2(150, SCREEN_HEIGHT - 100)
@@ -486,7 +669,6 @@ def setup_boss_level():
 
     # No laser walls, goals, coop boxes, spikes in this basic boss level setup. Can be added if needed.
     game_state = STATE_BOSS_LEVEL
-
 
 def load_level(level_idx):  #
     global game_state, current_level_index
@@ -509,6 +691,8 @@ def load_level(level_idx):  #
     warning_sprites.empty();
     throwable_objects_group.empty()  # Clear throwable from previous attempts
     effect_manager.reset_all_effects()
+    game_time_elapsed = 0.0  # Reset timer for new regular level
+    current_score = 0  # Reset score for new regular level
 
     player1.start_pos = pygame.math.Vector2(level["player1_start"])
     player2.start_pos = pygame.math.Vector2(level["player2_start"])
@@ -815,7 +999,116 @@ def load_game_state_from_file():
 
     print("遊戲狀態已載入。")
 
+def draw_leaderboard_screen():
+    screen.fill((20, 20, 40))  # 深藍色背景，或者您喜歡的顏色
+    title_text = font_large.render("排行榜", True, TEXT_COLOR)
+    screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 10))
 
+    if not leaderboard_data:
+        no_data_text = font_small.render("尚無紀錄", True, TEXT_COLOR)
+        screen.blit(no_data_text, (SCREEN_WIDTH // 2 - no_data_text.get_width() // 2, SCREEN_HEIGHT // 2))
+    else:
+        start_y = 120  # 排行榜條目開始的 Y 位置
+        line_height = LEADERBOARD_FACE_SIZE[1] + 20  # 每條紀錄的高度 (頭像高度 + 間距)
+        header_y_offset = -40  # 表頭相對於第一條紀錄的 Y 偏移
+
+        # 設定各欄位的 X 位置
+        rank_x = 60
+        face_x = rank_x + 70
+        name_x = face_x + LEADERBOARD_FACE_SIZE[0] + 25
+
+        # 時間和分數從右邊算回來，確保對齊
+        score_col_width = font_small.render("99/99", True, WHITE).get_width() + 10  # 預估分數欄寬度
+        time_col_width = font_small.render("99:99.99", True, WHITE).get_width() + 20  # 預估時間欄寬度
+
+        score_x = SCREEN_WIDTH - 70 - score_col_width // 2  # 分數欄中心 X
+        time_x = score_x - 30 - time_col_width // 2  # 時間欄中心 X
+        max_name_width = time_x - (name_x + font_small.render("...", True, WHITE).get_width()) - 20  # 名字最大寬度
+
+        # 繪製表頭
+        headers_info = [
+            ("排名", rank_x + font_tiny.render("排名", True, WHITE).get_width() // 2),
+            ("頭像", face_x + LEADERBOARD_FACE_SIZE[0] // 2),
+            ("名字", name_x + max_name_width // 2),  # 名字表頭大致居中於名字區域
+            ("時間", time_x),
+            ("分數", score_x)
+        ]
+        for header_text, hx_center in headers_info:
+            header_surf = font_tiny.render(header_text, True, WHITE)
+            screen.blit(header_surf, (hx_center - header_surf.get_width() // 2, start_y + header_y_offset))
+
+        for i, entry in enumerate(leaderboard_data):
+            if i >= MAX_LEADERBOARD_ENTRIES: break  # 最多顯示 MAX_LEADERBOARD_ENTRIES 筆
+
+            current_entry_y = start_y + i * line_height
+            # 計算該行所有文字和圖片的垂直中心點
+            y_pos_center_of_row = current_entry_y + LEADERBOARD_FACE_SIZE[1] // 2
+
+            # 1. 排名
+            rank_text_surf = font_small.render(f"{i + 1}.", True, TEXT_COLOR)
+            screen.blit(rank_text_surf, (rank_x, y_pos_center_of_row - rank_text_surf.get_height() // 2))
+
+            # 2. 頭像
+            face_img_surface = None
+            img_path = entry.get("face_image_path")  # 從紀錄中取得圖片路徑
+            if img_path:  # 如果有路徑
+                if img_path in loaded_face_images_cache:  # 檢查快取
+                    face_img_surface = loaded_face_images_cache[img_path]
+                elif os.path.exists(img_path):  # 如果不在快取中，但檔案存在
+                    try:
+                        raw_surface = pygame.image.load(img_path).convert_alpha()
+                        face_img_surface = pygame.transform.scale(raw_surface, LEADERBOARD_FACE_SIZE)
+                        loaded_face_images_cache[img_path] = face_img_surface  # 加入快取
+                    except pygame.error as e:
+                        print(f"排行榜載入影像錯誤 {img_path}: {e}")
+                        face_img_surface = None  # 載入失敗，後面會用預留位置
+                # else: 圖片路徑存在於紀錄中，但實際檔案遺失 (後面會用預留位置)
+
+            if face_img_surface is None:  # 如果沒有圖片路徑，或載入失敗
+                face_img_surface = pygame.Surface(LEADERBOARD_FACE_SIZE, pygame.SRCALPHA)  # 建立透明的預留位置 Surface
+                face_img_surface.fill((60, 60, 70, 180))  # 半透明深灰色
+                pygame.draw.rect(face_img_surface, (100, 100, 110),
+                                 (0, 0, LEADERBOARD_FACE_SIZE[0], LEADERBOARD_FACE_SIZE[1]), 1)  # 加上邊框
+            screen.blit(face_img_surface, (face_x, current_entry_y))  # 繪製頭像 (左上角對齊)
+
+            # 3. 名字 (需要處理過長的名字)
+            name_str_original = entry.get("name", "N/A")
+            name_text_surf = font_small.render(name_str_original, True, TEXT_COLOR)
+            # 如果名字太長，簡單截斷並加上 "..." (更複雜的可以用迴圈逐字元檢查)
+            if name_text_surf.get_width() > max_name_width:
+                temp_name = ""
+                for char_idx in range(len(name_str_original)):
+                    temp_name_check = name_str_original[:char_idx + 1] + "..."
+                    if font_small.render(temp_name_check, True, TEXT_COLOR).get_width() > max_name_width:
+                        name_str_display = name_str_original[:char_idx] + "..."
+                        break
+                else:  # 如果迴圈正常結束 (名字加上...也不會超長)
+                    name_str_display = name_str_original  # 或是 name_str_original[:max_chars_approx] + "..."
+                name_text_surf = font_small.render(name_str_display, True, TEXT_COLOR)
+            screen.blit(name_text_surf, (name_x, y_pos_center_of_row - name_text_surf.get_height() // 2))
+
+            # 4. 時間
+            time_val = entry.get("time", float('inf'))
+            time_str_display = "N/A"
+            if time_val != float('inf'):
+                minutes = int(time_val // 60)
+                seconds = int(time_val % 60)
+                milliseconds = int((time_val * 100) % 100)  # 取毫秒的前兩位
+                time_str_display = f"{minutes:02}:{seconds:02}.{milliseconds:02}"
+            time_text_surf = font_small.render(time_str_display, True, TEXT_COLOR)
+            screen.blit(time_text_surf, (time_x - time_text_surf.get_width() // 2,
+                                         y_pos_center_of_row - time_text_surf.get_height() // 2))  # 文字居中於 time_x
+
+            # 5. 分數
+            score_str_display = str(entry.get("score", "0"))
+            score_text_surf = font_small.render(score_str_display, True, TEXT_COLOR)
+            screen.blit(score_text_surf, (score_x - score_text_surf.get_width() // 2,
+                                          y_pos_center_of_row - score_text_surf.get_height() // 2))  # 文字居中於 score_x
+
+    # 繪製「重新開始/離開」的提示
+    options_prompt_text_str = "按 R 重新開始 | 按 B 返回主選單 | 按 Q 離開遊戲"
+    restart_prompt_surf = font_small.render(options_prompt_text_str, True, TEXT_COLOR)
+    screen.blit(restart_prompt_surf, (SCREEN_WIDTH // 2 - restart_prompt_surf.get_width() // 2, SCREEN_HEIGHT - 70))
 # ---遊戲初始化---
 game_state = STATE_START_SCREEN  #
 # current_level_index = 0 # Already defined above
@@ -831,8 +1124,9 @@ REVIVE_HOLD_TIME = 1.5  #
 revive_progress = 0.0  #
 revive_target = None  #
 
+def draw_game_state_messages():
+    global game_time_elapsed, current_score
 
-def draw_game_state_messages():  #
     if game_state == STATE_GAME_OVER:
         game_over_text = font_large.render("遊戲結束", True, TEXT_COLOR)
         restart_text = font_small.render("按 R 鍵重新開始", True, TEXT_COLOR)
@@ -841,13 +1135,21 @@ def draw_game_state_messages():  #
     # Removed STATE_PRE_BOSS_COMPLETE message block
     elif game_state == STATE_BOSS_DEFEATED:
         victory_text = font_large.render("Boss 已擊敗！恭喜！", True, (0, 255, 0))
-        restart_text = font_small.render("按 R 鍵重新開始遊戲", True, TEXT_COLOR)
         screen.blit(victory_text, (SCREEN_WIDTH // 2 - victory_text.get_width() // 2, SCREEN_HEIGHT // 2 - 50))
-        screen.blit(restart_text, (SCREEN_WIDTH // 2 - restart_text.get_width() // 2, SCREEN_HEIGHT // 2 + 20))
+        #screen.blit(restart_text, (SCREEN_WIDTH // 2 - restart_text.get_width() // 2, SCREEN_HEIGHT // 2 + 20))
 
     if game_state == STATE_PLAYING:
         level_text = font_small.render(f"關卡 {current_level_index + 1}", True, TEXT_COLOR)  #
         screen.blit(level_text, (10, 10))
+
+        # 新增：顯示計時器和分數
+        timer_val_str = f"{int(game_time_elapsed // 60):02}:{int(game_time_elapsed % 60):02}"  # 格式化為 MM:SS
+        timer_text_surf = font_tiny.render(f"時間: {timer_val_str}", True, TEXT_COLOR)
+        screen.blit(timer_text_surf, (SCREEN_WIDTH - timer_text_surf.get_width() - 10, 10))
+
+        score_text_surf = font_tiny.render(f"分數: {current_score}/{MAX_TOTAL_SCORE}", True, TEXT_COLOR)
+        screen.blit(score_text_surf, (SCREEN_WIDTH - score_text_surf.get_width() - 10, 35))  # 分數顯示在計時器下方
+
         p1_status_text = "存活" if player1.is_alive else "死亡";
         p2_status_text = "存活" if player2.is_alive else "死亡"
         p1_text = font_tiny.render(f"玩家1: {p1_status_text}", True, PLAYER1_COLOR);
@@ -873,6 +1175,11 @@ def draw_game_state_messages():  #
     elif game_state == STATE_BOSS_LEVEL:
         boss_level_text = font_large.render("!! BOSS BATTLE !!", True, (255, 50, 50))
         screen.blit(boss_level_text, (SCREEN_WIDTH // 2 - boss_level_text.get_width() // 2, 10))
+
+        timer_val_str = f"{int(game_time_elapsed // 60):02}:{int(game_time_elapsed % 60):02}"
+        timer_text_surf = font_tiny.render(f"時間: {timer_val_str}", True, TEXT_COLOR)
+        screen.blit(timer_text_surf, (SCREEN_WIDTH - timer_text_surf.get_width() - 10, 60))  # 調整 Y 位置
+
         p1_status_text = "存活" if player1.is_alive else "死亡";
         p2_status_text = "存活" if player2.is_alive else "死亡"
         p1_text = font_tiny.render(f"玩家1: {p1_status_text}", True, PLAYER1_COLOR);
@@ -899,7 +1206,6 @@ def draw_game_state_messages():  #
             p1_action_hint = font_effect.render(action_hint_text, True, WHITE)
             screen.blit(p1_action_hint, (10, SCREEN_HEIGHT - 100))
 
-
 # ---遊戲主程式循環---
 while running:  #
     dt = clock.tick(FPS) / 1000.0  #
@@ -922,6 +1228,11 @@ while running:  #
                     load_level(current_level_index);
                 elif event.key == pygame.K_l:  # 'L' 鍵載入遊戲
                     load_game_state_from_file()
+                elif event.key == pygame.K_v:  # 按 'V' 查看排行榜
+                    load_leaderboard()
+                    game_state = STATE_SHOW_LEADERBOARD
+                elif event.key == pygame.K_q: # 按 'q' 離開遊戲
+                    running = False;
 
         elif game_state == STATE_BOSS_LEVEL:
             if event.type == pygame.KEYDOWN:
@@ -931,25 +1242,111 @@ while running:  #
                     # Spawn near P1. If P1 is dead, spawn at a default location.
                     target_spawn_pos = player1.pos if player1.is_alive else pygame.math.Vector2(ITEM_SPAWN_POS_DEFAULT)
                     player2.handle_draw_item_key(throwable_objects_group, target_spawn_pos)
+
         elif (game_state == STATE_GAME_OVER or game_state == STATE_BOSS_DEFEATED):  #
             if event.type == pygame.KEYDOWN and event.key == pygame.K_r:  #
                 current_level_index = 0;
                 load_level(current_level_index)  # This resets to level 1
 
+        elif game_state == STATE_ASK_CAMERA:  # 新增：詢問是否使用攝影機
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_y:  # 如果玩家按 'Y' (Yes)
+                    game_state = STATE_CAMERA_INPUT
+                    player_name_input_active = True  # 開始輸入名稱
+                    camera_capture_active = False  # 攝影機尚未啟動
+                    photo_taken_prompt_active = False  # 重設拍照後提示狀態
+                    current_player_name = ""  # 清空上次的名稱
+                elif event.key == pygame.K_n:  # 如果玩家按 'N' (No)
+                    # 可以選擇在這裡為匿名玩家儲存一筆紀錄 (無照片)
+                    # add_leaderboard_entry("Anonymous", final_game_time, final_player_score, None)
+                    # save_leaderboard() # 如果有新增紀錄則儲存
+                    game_state = STATE_SHOW_LEADERBOARD  # 直接顯示排行榜
+
+        elif game_state == STATE_CAMERA_INPUT:  # 新增：攝影機與名稱輸入
+            if player_name_input_active:  # 如果正在輸入名稱
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RETURN:  # 按下 Enter 確認名稱
+                        if current_player_name.strip():  # 確保名稱不是空白
+                            player_name_input_active = False  # 結束名稱輸入
+                            initialize_camera_for_capture()  # 嘗試啟動攝影機
+                        else:
+                            print("提示：玩家名稱不能為空白。")  # 或在遊戲畫面顯示提示
+                    elif event.key == pygame.K_BACKSPACE:  # 按下 Backspace 刪除字元
+                        current_player_name = current_player_name[:-1]
+                    # 只允許輸入英文字母、數字和空白 (或者更嚴格的英文名)
+                    elif event.unicode.isprintable() and (
+                            event.unicode.encode('utf-8').isalpha() or event.unicode.isdigit() or event.unicode == ' '):
+                        if len(current_player_name) < 20:  # 限制名稱長度
+                            current_player_name += event.unicode
+
+            elif camera_capture_active and not photo_taken_prompt_active:  # 如果攝影機已啟動且尚未進入拍照後提示
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_a:  # 按 'A' 拍照
+                        handle_photo_capture()  # 拍照成功會設定 photo_taken_prompt_active = True
+                    elif event.key == pygame.K_q:  # 按 'Q' 跳過此次拍照/紀錄
+                        release_camera_resources()
+                        # 決定是否要儲存一筆匿名紀錄，或直接跳到排行榜
+                        # game_state = STATE_SHOW_LEADERBOARD # 直接跳過
+                        # 或是，如果玩家還沒輸入名字就按Q，可以回到ASK_CAMERA
+                        # 這裡假設按Q是結束整個拍照流程
+                        save_leaderboard()  # 如果之前有拍過照並add_entry，這裡儲存
+                        game_state = STATE_SHOW_LEADERBOARD
+
+            elif photo_taken_prompt_active:  # 如果已拍完照，顯示後續選項
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_c:  # (C)apture another: 用同一個名字再拍一張 (會覆蓋或產生新索引檔)
+                        photo_taken_prompt_active = False  # 清除提示，回到拍照模式
+                        # 攝影機應該仍然是啟動的
+                    elif event.key == pygame.K_n:  # (N)ew name: 換一個名字拍照 (等於開始一筆新的排行榜紀錄)
+                        photo_taken_prompt_active = False
+                        player_name_input_active = True  # 回到名稱輸入模式
+                        current_player_name = ""  # 清空目前名稱
+                        # 攝影機可能需要重新初始化，或保持開啟狀態
+                        # 為了簡化，我們假設 initialize_camera_for_capture() 會處理
+                        if not cap or not cap.isOpened():  # 確保攝影機是開啟的
+                            initialize_camera_for_capture()
+                    elif event.key == pygame.K_d:  # (D)one: 完成所有拍照
+                        photo_taken_prompt_active = False
+                        release_camera_resources()  # 釋放攝影機
+                        save_leaderboard()  # 儲存所有已加入的排行榜紀錄
+                        game_state = STATE_SHOW_LEADERBOARD  # 前往排行榜
+
+        elif game_state == STATE_SHOW_LEADERBOARD:  # 新增：顯示排行榜時的事件
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:  # 按 'R' 重新開始遊戲
+                    current_level_index = 0
+                    game_time_elapsed = 0.0  # 重設遊戲時間
+                    current_score = 0  # 重設分數
+                    load_leaderboard()  # 重新載入排行榜 (以防萬一，但通常不需要)
+                    load_level(current_level_index)  # 開始第一關
+                elif event.key == pygame.K_q:  # 按 'Q' 離開遊戲
+                    running = False
+                elif event.key == pygame.K_b:  # 按 'B' 返回開始畫面
+                    game_state = STATE_START_SCREEN
+                    prompt_blink_timer = 0.0
+                    prompt_text_visible = True
+
     if game_state == STATE_START_SCREEN:  #
         prompt_blink_timer += dt  #
-        if prompt_blink_timer >= prompt_blink_interval: prompt_blink_timer = 0.0; prompt_text_visible = not prompt_text_visible  #
-    elif game_state == STATE_PLAYING:  #
-        effect_manager.update(dt)  #
-        player1.update_movement(laser_wall_sprites, coop_box_group, spike_trap_group, meteor_sprites, effect_manager,
-                                dt)  #
-        player2.update_movement(laser_wall_sprites, coop_box_group, spike_trap_group, meteor_sprites, effect_manager,
-                                dt)  #
+        if prompt_blink_timer >= prompt_blink_interval:
+            prompt_blink_timer = 0.0;
+            prompt_text_visible = not prompt_text_visible  #
 
-        for player in player_sprites:  #
+    elif game_state == STATE_PLAYING:
+        game_time_elapsed += dt
+        effect_manager.update(dt)
+        player1.update_movement(laser_wall_sprites, coop_box_group, spike_trap_group, meteor_sprites, effect_manager, dt)
+        player2.update_movement(laser_wall_sprites, coop_box_group, spike_trap_group, meteor_sprites, effect_manager, dt)
+
+        for player in player_sprites: # 處理玩家與果實的碰撞
             if player.is_alive:
-                collided_fruits = pygame.sprite.spritecollide(player, fruit_sprites, True)  #
-                for fruit in collided_fruits: effect_manager.apply_effect(fruit.fruit_type, player.player_id)  #
+                collided_fruits = pygame.sprite.spritecollide(player, fruit_sprites, True)
+                for fruit in collided_fruits:
+                    if fruit.fruit_type == "score":
+                        if current_score < MAX_TOTAL_SCORE:
+                            current_score += SCORE_FRUIT_VALUE
+                    else:
+                        effect_manager.apply_effect(fruit.fruit_type, player.player_id)
 
         if effect_manager.should_spawn_meteor():  #
             spawn_x = random.randint(METEOR_SIZE, SCREEN_WIDTH - METEOR_SIZE);
@@ -1029,11 +1426,10 @@ while running:  #
         if not player1.is_alive and not player2.is_alive: game_state = STATE_GAME_OVER  #
 
     elif game_state == STATE_BOSS_LEVEL:
-        player1.update_movement(None, None, None, None, effect_manager, dt, boss_enemy, boss_enemy.projectiles,
-                                throwable_objects_group)
-        player2.update_movement(None, None, None, None, effect_manager, dt, boss_enemy, boss_enemy.projectiles,
-                                throwable_objects_group)
+        game_time_elapsed += dt
 
+        player1.update_movement(None, None, None, None, effect_manager, dt, boss_enemy, boss_enemy.projectiles, throwable_objects_group)
+        player2.update_movement(None, None, None, None, effect_manager, dt, boss_enemy, boss_enemy.projectiles, throwable_objects_group)
         player1.update_boss_interactions(dt)
         player2.update_boss_interactions(dt)
 
@@ -1051,14 +1447,20 @@ while running:  #
                         if boss_enemy: boss_enemy.projectiles.empty()  # Clear projectiles
                         break  # Exit loop as boss is defeated
             if boss_enemy.current_health <= 0:  # Double check if boss was defeated
-                pass  # Already handled
+                final_game_time = game_time_elapsed
+                final_player_score = current_score
+
+                boss_group.empty()
+                throwable_objects_group.empty()
+                if boss_enemy and hasattr(boss_enemy, 'projectiles'): boss_enemy.projectiles.empty()
+
+                game_state = STATE_ASK_CAMERA
             elif not player1.is_alive and not player2.is_alive:
                 game_state = STATE_GAME_OVER  # Both players died during boss fight
 
         throwable_objects_group.update(dt)  # Update all throwable items (gravity if thrown, etc.)
         # Ensure held items are also updated if their update logic needs it separate from player
         if player1.held_object: player1.held_object.update(dt, player1.pos, player1.facing_left)
-
         # Chain physics for boss level (same logic, just no coop boxes etc.)
         for _ in range(CHAIN_ITERATIONS):
             if player1.is_alive and player2.is_alive:
@@ -1103,6 +1505,10 @@ while running:  #
                                         min(p2_new_pos.y, SCREEN_HEIGHT - player2.rect.height // 2));
                     player2.rect.center = player2.pos
 
+    elif game_state == STATE_CAMERA_INPUT:
+        if camera_capture_active and not player_name_input_active and not photo_taken_prompt_active:
+            process_camera_frame()  # Update camera_frame_surface for display
+
     # ---遊戲畫面繪製---
     screen.fill(BLACK)  #
 
@@ -1114,6 +1520,10 @@ while running:  #
             screen.blit(start_prompt_text,(SCREEN_WIDTH // 2 - start_prompt_text.get_width() // 2,SCREEN_HEIGHT // 2))
             load_prompt_text = font_small.render("按 L 載入遊戲", True, TEXT_COLOR)  # 新增提示
             screen.blit(load_prompt_text, (SCREEN_WIDTH // 2 - load_prompt_text.get_width() // 2, SCREEN_HEIGHT // 2 + 40))
+            view_leaderboard_prompt_text = font_small.render("按 V 查看排行榜", True, TEXT_COLOR)
+            screen.blit(view_leaderboard_prompt_text,(SCREEN_WIDTH // 2 - view_leaderboard_prompt_text.get_width() // 2, SCREEN_HEIGHT // 2 + 80))
+            quit_prompt_text = font_small.render("按 Q 退出遊戲", True, TEXT_COLOR)
+            screen.blit(quit_prompt_text,(SCREEN_WIDTH // 2 - quit_prompt_text.get_width() // 2, SCREEN_HEIGHT // 2 + 120))
 
     elif game_state == STATE_PLAYING:  #
         current_lw_alpha = effect_manager.get_laser_wall_alpha()  #
@@ -1129,6 +1539,7 @@ while running:  #
         fruit_sprites.draw(screen);
         warning_sprites.draw(screen);
         meteor_sprites.draw(screen)  #
+
     elif game_state == STATE_BOSS_LEVEL:
         # Draw boss, its projectiles, and throwable objects
         if boss_enemy:
@@ -1154,6 +1565,64 @@ while running:  #
 
     # Draw UI messages (common to most states or handled within)
     draw_game_state_messages()  #
+    # 新增：新遊戲狀態的繪製邏輯
+    if game_state == STATE_ASK_CAMERA:
+        ask_text = font_small.render("啟用攝影機擷取頭像? (Y / N)", True, TEXT_COLOR)
+        screen.blit(ask_text, (SCREEN_WIDTH // 2 - ask_text.get_width() // 2, SCREEN_HEIGHT // 2 - 20))
+
+    elif game_state == STATE_CAMERA_INPUT:
+        if player_name_input_active:  # 如果正在輸入名稱
+            name_prompt_text = font_small.render("請輸入英文名字 (Enter 確認):", True, TEXT_COLOR)
+            screen.blit(name_prompt_text,
+                        (SCREEN_WIDTH // 2 - name_prompt_text.get_width() // 2, SCREEN_HEIGHT // 2 - 100))
+
+            # 繪製名稱輸入框
+            name_field_rect = pygame.Rect(SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 - 60, 300, 40)
+            pygame.draw.rect(screen, WHITE, name_field_rect, 2)  # 框線
+            name_input_surf = font_small.render(current_player_name, True, WHITE)  # 目前輸入的文字
+            screen.blit(name_input_surf, (name_field_rect.x + 5, name_field_rect.y + (
+                        name_field_rect.height - name_input_surf.get_height()) // 2))  # 文字垂直居中
+
+            # (選擇性) 繪製閃爍的游標
+            if pygame.time.get_ticks() % 1000 < 500:  # 每 0.5 秒閃爍一次
+                cursor_x = name_field_rect.x + 5 + name_input_surf.get_width()
+                if cursor_x < name_field_rect.right - 5:  # 確保游標在框內
+                    pygame.draw.line(screen, WHITE, (cursor_x, name_field_rect.y + 5),
+                                     (cursor_x, name_field_rect.y + name_field_rect.height - 5), 2)
+
+        elif camera_capture_active and not photo_taken_prompt_active:  # 如果攝影機啟動且不是在拍照後提示階段
+            if camera_frame_surface:  # 如果 Pygame 的攝影機畫面 Surface 已準備好
+                # 計算攝影機畫面的顯示位置 (例如，居中，上方留空間給標題)
+                feed_x = (SCREEN_WIDTH - camera_frame_surface.get_width()) // 2
+                feed_y = (SCREEN_HEIGHT - camera_frame_surface.get_height()) // 2 - 80  # 向上移動一些
+                screen.blit(camera_frame_surface, (feed_x, feed_y))
+            else:  # 如果畫面還沒準備好 (例如，攝影機剛啟動)
+                init_cam_text = font_small.render("正在初始化攝影機...", True, TEXT_COLOR)
+                screen.blit(init_cam_text,
+                            (SCREEN_WIDTH // 2 - init_cam_text.get_width() // 2, SCREEN_HEIGHT // 2 - 20))
+
+            capture_prompt_text_str = "將臉對準框内, 按 'A' 拍照, 按 'Q' 跳過此次紀錄"
+            capture_prompt_surf = font_tiny.render(capture_prompt_text_str, True, TEXT_COLOR)
+            screen.blit(capture_prompt_surf,
+                        (SCREEN_WIDTH // 2 - capture_prompt_surf.get_width() // 2, SCREEN_HEIGHT - 70))
+
+        elif photo_taken_prompt_active:  # 如果已拍照，顯示後續操作提示
+            # (選擇性) 繼續顯示攝影機畫面作為背景
+            if camera_capture_active and camera_frame_surface:
+                feed_x = (SCREEN_WIDTH - camera_frame_surface.get_width()) // 2
+                feed_y = (SCREEN_HEIGHT - camera_frame_surface.get_height()) // 2 - 120  # 再向上移動一些
+                screen.blit(camera_frame_surface, (feed_x, feed_y))
+
+            prompt_base_y = SCREEN_HEIGHT - 100
+            success_text_surf = font_small.render("照片已儲存!", True, (0, 255, 0))  # 綠色表示成功
+            screen.blit(success_text_surf, (SCREEN_WIDTH // 2 - success_text_surf.get_width() // 2, prompt_base_y - 40))
+
+            options_text_str = "再拍一張(C) | 換名字並重拍(N) | 完成並查看排行榜(D)"
+            options_text_surf = font_tiny.render(options_text_str, True, TEXT_COLOR)
+            screen.blit(options_text_surf, (SCREEN_WIDTH // 2 - options_text_surf.get_width() // 2, prompt_base_y))
+
+    elif game_state == STATE_SHOW_LEADERBOARD:  # 新增：顯示排行榜
+        draw_leaderboard_screen()
 
     show_opencv_paint_window()  #
 
@@ -1217,5 +1686,5 @@ while running:  #
 
     pygame.display.flip()  #
 
-pygame.quit()  #
-if use_opencv: cv2.destroyAllWindows()  #
+release_camera_resources()
+pygame.quit()
