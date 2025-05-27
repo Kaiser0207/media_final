@@ -446,6 +446,37 @@ levels_data = [  #
         "coop_box_start": [(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)],
         "fruits": [(160, SCREEN_HEIGHT // 2 + 20, "volcano"), (SCREEN_WIDTH - 140, SCREEN_HEIGHT // 2 - 30, "mirror"),
                    (SCREEN_WIDTH - 140, SCREEN_HEIGHT - 60, "invisible_wall")]
+    },{
+        "player1_start": (50, SCREEN_HEIGHT // 2 + 40), "player2_start": (50, SCREEN_HEIGHT // 2 - 30),
+        "goal1_pos": (SCREEN_WIDTH - 50, 190), "goal2_pos": (SCREEN_WIDTH - 50, SCREEN_HEIGHT - 190),
+        "laser_walls": [  # 衡的外面
+            (0, 100, 500, 20), (0, SCREEN_HEIGHT - 100, 500, 20),
+            (600, 100, 150, 20), (600, SCREEN_HEIGHT - 100, 150, 20),
+            (800, 100, 90, 20), (800, SCREEN_HEIGHT - 100, 100, 20),
+            # 值得裡面
+            (80, 120, 20, 150), (80, SCREEN_HEIGHT - 260, 20, 180),
+            (160, 210, 20, 150), (160, SCREEN_HEIGHT - 340, 20, 180),
+            (240, 120, 20, 150), (240, SCREEN_HEIGHT - 260, 20, 180),
+            (320, 210, 20, 150), (320, SCREEN_HEIGHT - 340, 20, 180),
+            (400, 80, 20, 180), (400, SCREEN_HEIGHT - 250, 20, 180),
+            (480, 210, 20, 150), (480, SCREEN_HEIGHT - 340, 20, 180),
+            # 種兼職的
+            (560, 120, 20, 150), (560, SCREEN_HEIGHT - 260, 20, 180),
+            # 終點乓圈圈
+            (980, 330, 100, 20), (980, SCREEN_HEIGHT - 330, 150, 20),
+            (950, 150, 20, 150), (950, SCREEN_HEIGHT - 300, 20, 150),
+
+            (850, 220, 20, 150), (850, SCREEN_HEIGHT - 350, 20, 180),
+
+            (650, SCREEN_HEIGHT // 2 - 40, 20, 170),
+            (750, 100, 20, 220), (750, SCREEN_HEIGHT - 300, 20, 220),
+            (0, SCREEN_HEIGHT // 2, 500, 20)],
+        "coop_box_start": [(1010, 120), (1050, 120), (SCREEN_WIDTH - 70, SCREEN_HEIGHT - 120),
+                           (SCREEN_WIDTH - 30, SCREEN_HEIGHT - 120)],
+        "spike_traps": [(750 ,325, 40, 40, 1.5, 2.5, 0.0),(750 ,365, 40, 40, 1.5, 2.5, 0.0),(40, 40, 40, 40, 1.0, 2.0, 0.0), (100, 40, 40, 40, 0.7, 1.5, 0.5),
+                        (160, 40, 40, 40, 1.2, 1.0, 1.0)],
+        "fruits": [(SCREEN_WIDTH // 2, 130, "mirror"), (200, 100, "invisible_wall"),
+                   (SCREEN_WIDTH - 200, SCREEN_HEIGHT - 100, "volcano")]
     }
     # Boss level will be handled separately, not in this list structure.
 ]
