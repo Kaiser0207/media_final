@@ -2,11 +2,12 @@ import pygame
 import cv2
 import numpy as np
 import math
-from player import Player, ACTION_KEY_P1, DRAW_ITEM_KEY_P2, PLAYER_RADIUS
+from player import *
 from boss_entities import Boss
 import random
 import json
 import os
+from music import *
 
 # --- 常數 ---
 SCREEN_WIDTH = 1080
@@ -80,6 +81,10 @@ pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("雙人合作遊戲 Demo - 果實能力 & Boss")  # Updated Caption
 clock = pygame.time.Clock()
+
+# --- 音樂檔案路徑 ---
+LEVEL_1_MUSIC = os.path.join("game_music", "04 - Silent Forest.mp3")
+BOSS_MUSIC = os.path.join("game_music", "10 - Lost Shrine.mp3")
 
 # 圖片載入
 box_img = pygame.image.load("box.png").convert_alpha()  #
@@ -416,19 +421,6 @@ levels_data = [  #
         "coop_box_start": [(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)],
         "fruits": [(160, SCREEN_HEIGHT // 2 + 20, "volcano"), (SCREEN_WIDTH - 140, SCREEN_HEIGHT // 2 - 30, "mirror"),
                    (SCREEN_WIDTH - 140, SCREEN_HEIGHT - 60, "invisible_wall")]
-    },{  # Level 3f Data (existing)
-        "player1_start": (50, 50), "player2_start": (100, 50),
-        "goal1_pos": (200, SCREEN_HEIGHT - 100), "goal2_pos": (200, SCREEN_HEIGHT - 50),
-        "laser_walls": [(0, 0, SCREEN_WIDTH, 20), (0, SCREEN_HEIGHT - 20, SCREEN_WIDTH, 20), (0, 0, 20, SCREEN_HEIGHT),
-                        (SCREEN_WIDTH - 20, 0, 20, SCREEN_HEIGHT), (150, 20, 20, SCREEN_HEIGHT // 2 - 25),
-                        (150, SCREEN_HEIGHT // 2 + 50, 20, SCREEN_HEIGHT // 2 - 95),
-                        (SCREEN_WIDTH - 150, 20, 20, SCREEN_HEIGHT // 2 - 100),
-                        (SCREEN_WIDTH - 150, SCREEN_HEIGHT // 2, 20, SCREEN_HEIGHT // 2 - 100),
-                        (150, SCREEN_HEIGHT // 3, SCREEN_WIDTH - 300, 20),
-                        (150, SCREEN_HEIGHT * 2 // 3, SCREEN_WIDTH - 300, 20)],
-        "coop_box_start": [(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)],
-        "fruits": [(160, SCREEN_HEIGHT // 2 + 20, "volcano"), (SCREEN_WIDTH - 140, SCREEN_HEIGHT // 2 - 30, "mirror"),
-                   (SCREEN_WIDTH - 140, SCREEN_HEIGHT - 60, "invisible_wall")]
     }
     # Boss level will be handled separately, not in this list structure.
 ]
@@ -468,6 +460,8 @@ boss_enemy = None  # Will be initialized for boss level
 # --- Boss Level Setup Function ---
 def setup_boss_level():
     global boss_enemy, game_state
+    # 播放Boss關卡音樂
+    play_music(BOSS_MUSIC)
     # Clear regular level sprites if any could persist (though load_level should handle most)
     laser_wall_sprites.empty()
     goal_sprites.empty()
@@ -500,8 +494,11 @@ def load_level(level_idx):  #
         setup_boss_level()  # Directly set up the boss level if all regular levels are done
         return
 
+
     level = levels_data[level_idx]
     current_level_index = level_idx  # Keep track of the actual level number being played
+
+    play_music(LEVEL_1_MUSIC)
 
     laser_wall_sprites.empty();
     goal_sprites.empty();
