@@ -30,7 +30,13 @@ class Player(pygame.sprite.Sprite):
         self.walk_frames = []
         self.idle_frames = []
         self.death_frames = []
-        self.revive_frames = []  # Added initialization
+        self.revive_frames = []
+        self.is_invincible = False
+        self.invincibility_duration = 2.0  # Seconds
+        self.invincibility_timer = 0.0
+        self.flash_timer = 0.0
+        self.flash_interval = 0.1  # Seconds, for how quickly the player flashes
+        self.is_currently_visible = True  # To toggle visibility for flashing effect
 
         if self.player_id == 0:  # Knight (P1)
             self.walk_frames = Knight_animation.load_knight_run_animation(target_width=PLAYER_RADIUS * 3,
@@ -52,6 +58,13 @@ class Player(pygame.sprite.Sprite):
                                                                            target_height=PLAYER_RADIUS * 3)
             self.revive_frames = Witch_animation.load_witch_revive_animation(target_width=PLAYER_RADIUS * 3,
                                                                              target_height=PLAYER_RADIUS * 3)
+            if self.player_id == 1:  # Witch
+                print(
+                    f"Witch revive_frames length: {len(self.revive_frames) if self.revive_frames else 'None or Empty'}")
+                if self.revive_frames:
+                    for i, f in enumerate(self.revive_frames):
+                        if not isinstance(f, pygame.Surface):
+                            print(f"Witch revive_frame {i} is not a Surface: {type(f)}")
 
         self.frame_interval = 0.2
         self.idle_frame_interval = 0.3
@@ -101,7 +114,17 @@ class Player(pygame.sprite.Sprite):
         self.held_object = None
         self.can_spawn_item_timer = 0
 
+        self.is_invincible = False
+        self.invincibility_timer = 0.0
+        self.flash_timer = 0.0
+        self.is_currently_visible = True
+        if hasattr(self, 'image') and self.image and self.walk_frames:
+            self.image.set_alpha(255)
+        elif self.walk_frames:
+            pass
+
     def revive(self):
+        print(f"Player {self.player_id} reviving. Revive frames available: {bool(self.revive_frames)}")
         self.is_alive = True
         if self.death_pos:
             self.pos = pygame.math.Vector2(self.death_pos.x, self.death_pos.y)
@@ -120,7 +143,30 @@ class Player(pygame.sprite.Sprite):
         self.death_pos = None
         self.held_object = None  # Drop object on revive
 
+        self.is_invincible = True
+        self.invincibility_timer = self.invincibility_duration
+        self.flash_timer = 0.0
+        self.is_currently_visible = True
+        if hasattr(self, 'image') and self.image:
+            self.image.set_alpha(255)
+
+    def update_invincibility_and_flash(self, dt):
+        if self.is_invincible:
+            self.invincibility_timer -= dt
+            self.flash_timer -= dt
+
+            if self.flash_timer <= 0:
+                self.is_currently_visible = not self.is_currently_visible
+                self.flash_timer = self.flash_interval
+
+            if self.invincibility_timer <= 0:
+                self.is_invincible = False
+                self.is_currently_visible = True  # Ensure player is visible when invincibility ends
+
     def die(self, start_shake=True):  # Added optional shake parameter
+        if self.is_invincible:  # Check for invincibility
+            return
+
         if self.is_alive:
             self.is_alive = False
             if self.held_object:  # Drop object if holding one
@@ -157,6 +203,8 @@ class Player(pygame.sprite.Sprite):
                         effect_manager=None, dt=0.016,
                         # Boss level specific arguments
                         boss_entity=None, boss_projectiles=None, throwable_objects_group=None):
+        self.update_invincibility_and_flash(dt)
+
         if self.is_reviving:
             if self.revive_frames:
                 revive_anim_interval = 0.08
@@ -164,19 +212,31 @@ class Player(pygame.sprite.Sprite):
                 if self.revive_anim_timer >= revive_anim_interval:
                     self.revive_anim_frame += 1
                     self.revive_anim_timer = 0.0
+
                 if self.revive_anim_frame >= len(self.revive_frames):
                     self.is_reviving = False
                     self.revive_anim_frame = 0
                     self.image = self.walk_frames[0] if self.walk_frames else self.image  # Fallback
                     self.current_frame = 0
                 else:
-                    frame = self.revive_frames[self.revive_anim_frame]
+                    frame_surface = self.revive_frames[self.revive_anim_frame]
+                    current_image = frame_surface.copy()
+
                     if self.facing_left:
-                        frame = pygame.transform.flip(frame, True, False)
-                    self.image = frame
+                        frame = pygame.transform.flip(frame, True, False) # THIS IS LINE 218
+                    self.image = current_image
+                    if self.is_invincible:
+                        if not self.is_currently_visible:
+                            self.image.set_alpha(100)
+                        else:
+                            self.image.set_alpha(255)
+                    else:
+                        self.image.set_alpha(255)
             else:
                 self.is_reviving = False
-            return
+                self.current_frame = 0
+            if self.is_reviving:
+                return
 
         if not self.is_alive:
             if self.is_shaking:
@@ -332,6 +392,14 @@ class Player(pygame.sprite.Sprite):
         if self.facing_left:
             frame = pygame.transform.flip(frame, True, False)
         self.image = frame
+
+        if self.is_invincible:
+            if not self.is_currently_visible:
+                self.image.set_alpha(100)
+            else:
+                self.image.set_alpha(255)
+        else:
+            self.image.set_alpha(255)
 
     def _update_dead_image(self, dt):  # Added dt
         if self.death_frames:

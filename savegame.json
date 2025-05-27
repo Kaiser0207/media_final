@@ -1,9 +1,9 @@
 {
-    "current_level_index": 1,
+    "current_level_index": 0,
     "game_state_on_save": 0,
     "player1": {
-        "pos_x": 50.0,
-        "pos_y": 374.0,
+        "pos_x": 100.0,
+        "pos_y": 360.0,
         "is_alive": true,
         "facing_left": false,
         "death_pos_x": null,
@@ -11,8 +11,8 @@
         "held_object_info": null
     },
     "player2": {
-        "pos_x": 100.0,
-        "pos_y": 353.0,
+        "pos_x": 150.0,
+        "pos_y": 354.0,
         "is_alive": true,
         "facing_left": false,
         "death_pos_x": null,
@@ -46,8 +46,12 @@
     "throwable_objects": [],
     "coop_boxes": [
         {
-            "pos_x": 540.0,
-            "pos_y": 360.0
+            "pos_x": 270.0,
+            "pos_y": 180.0
+        },
+        {
+            "pos_x": 320.0,
+            "pos_y": 230.0
         }
     ]
 }

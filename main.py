@@ -416,6 +416,19 @@ levels_data = [  #
         "coop_box_start": [(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)],
         "fruits": [(160, SCREEN_HEIGHT // 2 + 20, "volcano"), (SCREEN_WIDTH - 140, SCREEN_HEIGHT // 2 - 30, "mirror"),
                    (SCREEN_WIDTH - 140, SCREEN_HEIGHT - 60, "invisible_wall")]
+    },{  # Level 3f Data (existing)
+        "player1_start": (50, 50), "player2_start": (100, 50),
+        "goal1_pos": (200, SCREEN_HEIGHT - 100), "goal2_pos": (200, SCREEN_HEIGHT - 50),
+        "laser_walls": [(0, 0, SCREEN_WIDTH, 20), (0, SCREEN_HEIGHT - 20, SCREEN_WIDTH, 20), (0, 0, 20, SCREEN_HEIGHT),
+                        (SCREEN_WIDTH - 20, 0, 20, SCREEN_HEIGHT), (150, 20, 20, SCREEN_HEIGHT // 2 - 25),
+                        (150, SCREEN_HEIGHT // 2 + 50, 20, SCREEN_HEIGHT // 2 - 95),
+                        (SCREEN_WIDTH - 150, 20, 20, SCREEN_HEIGHT // 2 - 100),
+                        (SCREEN_WIDTH - 150, SCREEN_HEIGHT // 2, 20, SCREEN_HEIGHT // 2 - 100),
+                        (150, SCREEN_HEIGHT // 3, SCREEN_WIDTH - 300, 20),
+                        (150, SCREEN_HEIGHT * 2 // 3, SCREEN_WIDTH - 300, 20)],
+        "coop_box_start": [(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)],
+        "fruits": [(160, SCREEN_HEIGHT // 2 + 20, "volcano"), (SCREEN_WIDTH - 140, SCREEN_HEIGHT // 2 - 30, "mirror"),
+                   (SCREEN_WIDTH - 140, SCREEN_HEIGHT - 60, "invisible_wall")]
     }
     # Boss level will be handled separately, not in this list structure.
 ]
