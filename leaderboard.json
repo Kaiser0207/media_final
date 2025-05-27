@@ -4,5 +4,11 @@
         "time": 15.72,
         "score": 0,
         "face_image_path": "CatchFace\\Kaiser_4.jpg"
+    },
+    {
+        "name": "Hung",
+        "time": 40.44,
+        "score": 0,
+        "face_image_path": "CatchFace\\Hung_1.png"
     }
 ]

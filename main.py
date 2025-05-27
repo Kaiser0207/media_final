@@ -152,7 +152,8 @@ leaderboard_data = []
 camera_capture_active = False
 player_name_input_active = False
 current_player_name = ""
-captured_face_image_path = None # Stores path of the latest capture for current entry
+captured_face_image_path = None
+current_leaderboard_entry_index = None
 final_game_time = 0.0
 final_player_score = 0
 photo_taken_prompt_active = False # After a photo is taken, ask what to do next.
@@ -473,11 +474,15 @@ levels_data = [  #
             (0, SCREEN_HEIGHT // 2, 500, 20)],
         "coop_box_start": [(1010, 120), (1050, 120), (SCREEN_WIDTH - 70, SCREEN_HEIGHT - 120),
                            (SCREEN_WIDTH - 30, SCREEN_HEIGHT - 120)],
-        "spike_traps": [(750 ,325, 40, 40, 1.5, 2.5, 0.0),(750 ,365, 40, 40, 1.5, 2.5, 0.0),(40, 40, 40, 40, 1.0, 2.0, 0.0), (100, 40, 40, 40, 0.7, 1.5, 0.5),
+        "spike_traps": [(750 ,325, 40, 40, 1.5, 2.5, 0.0),(750 ,365, 40, 40, 1.5, 2.5, 0.0),
+                        (75 ,300, 40, 40, 1.5, 2.5, 1.5),(155 ,570, 40, 40, 1.5, 2.5, 0.4),
+                        (235 ,300, 40, 40, 1.5, 2.5, 0.3),(315 ,570, 40, 40, 1.5, 2.5, 1.6),
+                        (395 ,300, 40, 40, 1.5, 2.5, 2.5),(475 ,570, 40, 40, 1.5, 2.5, 0.5),
+                        (40, 40, 40, 40, 1.0, 2.0, 0.0), (100, 40, 40, 40, 0.7, 1.5, 0.5),
                         (160, 40, 40, 40, 1.2, 1.0, 1.0)],
         "fruits": [(SCREEN_WIDTH // 2, 130, "mirror"), (200, 100, "invisible_wall"),
                    (SCREEN_WIDTH - 200, SCREEN_HEIGHT - 100, "volcano")]
-    }
+    },
     # Boss level will be handled separately, not in this list structure.
 ]
 current_level_index = 0  #
@@ -623,7 +628,7 @@ def process_camera_frame():
 
 def handle_photo_capture():
     global cap, face_cascade, current_player_name, captured_face_image_path, photo_taken_prompt_active
-    global final_game_time, final_player_score  # Make sure these are accessible
+    global final_game_time, final_player_score, current_leaderboard_entry_index  # Make sure these are accessible
 
     if not camera_capture_active or not cap or not cap.isOpened() or not face_cascade:
         return False
@@ -635,8 +640,6 @@ def handle_photo_capture():
     frame_bgr = cv2.flip(frame_bgr, 1)  # Ensure consistent orientation with preview
 
     gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
-    # gray = cv2.equalizeHist(gray)
-
     faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60))
 
     if len(faces) > 0:
@@ -646,25 +649,53 @@ def handle_photo_capture():
 
         # Sanitize player name for filename
         sane_name = "".join(c if c.isalnum() else "_" for c in current_player_name.strip())
-        if not sane_name: sane_name = "player"  # Default if name was all symbols
+        if not sane_name: sane_name = "player"
+        new_image_path = None
 
         index = 1
-        base_filename = os.path.join(FACE_IMAGE_SAVE_DIR, f"{sane_name}_{{}}.jpg")
+        base_filename = os.path.join(FACE_IMAGE_SAVE_DIR, f"{sane_name}_{{}}.png")
         filename_to_save = base_filename.format(index)
         while os.path.exists(filename_to_save):
             index += 1
             filename_to_save = base_filename.format(index)
-
+        new_image_path = filename_to_save
         try:
-            cv2.imwrite(filename_to_save, face_resize)
-            captured_face_image_path = filename_to_save  # Store for current entry
+            if captured_face_image_path and os.path.exists(captured_face_image_path):
+                try:
+                    print(f"準備刪除先前拍攝的照片: {captured_face_image_path}")
+                    os.remove(captured_face_image_path)  # <--- 刪除舊照片檔案
+                    print(f"已成功刪除: {captured_face_image_path}")
+                except OSError as e:
+                    print(f"刪除舊照片 {captured_face_image_path} 失敗: {e}")
+
+            print(f"Attempting to save image to: '{new_image_path}'")  # <-- ADD THIS LINE FOR DEBUGGING
+            cv2.imwrite(new_image_path, face_resize)
             print(f"臉部影像已儲存至 {filename_to_save}")
 
-            # Add to leaderboard data (will be saved when user is 'Done')
-            add_leaderboard_entry(current_player_name, final_game_time, final_player_score, captured_face_image_path)
-            # save_leaderboard() # Save can be deferred until player is fully done with captures
+            if current_leaderboard_entry_index is not None and \
+                    0 <= current_leaderboard_entry_index < len(leaderboard_data):
+                entry_to_update = leaderboard_data[current_leaderboard_entry_index]
 
-            photo_taken_prompt_active = True  # Show the "continue?" prompt
+                old_image_for_entry = entry_to_update.get("face_image_path")
+                if old_image_for_entry and os.path.exists(
+                        old_image_for_entry) and old_image_for_entry != new_image_path:
+                    try:
+                        os.remove(old_image_for_entry)
+                        print(f"已成功刪除排行榜條目中的舊頭像: {old_image_for_entry}")
+                    except OSError as e:
+                        print(f"刪除排行榜條目舊頭像 {old_image_for_entry} 失敗: {e}")
+
+                entry_to_update["face_image_path"] = new_image_path
+                entry_to_update["name"] = current_player_name
+                print(f"已更新排行榜紀錄索引 {current_leaderboard_entry_index} 的頭像為 {new_image_path}")
+            else:
+                add_leaderboard_entry(current_player_name, final_game_time, final_player_score, new_image_path)
+                current_leaderboard_entry_index = len(leaderboard_data) - 1  # 記住這個新條目的索引
+                print(f"已新增排行榜紀錄，新索引為: {current_leaderboard_entry_index}")
+
+            captured_face_image_path = new_image_path  # <--- 更新全域變數，指向最新儲存的照片
+
+            photo_taken_prompt_active = True  # 顯示後續選項提示
             return True
         except Exception as e:
             print(f"儲存影像時發生錯誤: {e}")
@@ -1287,6 +1318,8 @@ while running:  #
                     camera_capture_active = False  # 攝影機尚未啟動
                     photo_taken_prompt_active = False  # 重設拍照後提示狀態
                     current_player_name = ""  # 清空上次的名稱
+                    captured_face_image_path = None  # <--- 確保重設
+                    current_leaderboard_entry_index = None  # <--- 確保重設
                 elif event.key == pygame.K_n:  # 如果玩家按 'N' (No)
                     # 可以選擇在這裡為匿名玩家儲存一筆紀錄 (無照片)
                     # add_leaderboard_entry("Anonymous", final_game_time, final_player_score, None)
@@ -1299,6 +1332,8 @@ while running:  #
                     if event.key == pygame.K_RETURN:  # 按下 Enter 確認名稱
                         if current_player_name.strip():  # 確保名稱不是空白
                             player_name_input_active = False  # 結束名稱輸入
+                            captured_face_image_path = None  # <--- 新名字，沒有已拍照片
+                            current_leaderboard_entry_index = None  # <--- 新名字，將會是新的排行榜條目
                             initialize_camera_for_capture()  # 嘗試啟動攝影機
                         else:
                             print("提示：玩家名稱不能為空白。")  # 或在遊戲畫面顯示提示
@@ -1316,30 +1351,34 @@ while running:  #
                         handle_photo_capture()  # 拍照成功會設定 photo_taken_prompt_active = True
                     elif event.key == pygame.K_q:  # 按 'Q' 跳過此次拍照/紀錄
                         release_camera_resources()
-                        # 決定是否要儲存一筆匿名紀錄，或直接跳到排行榜
-                        # game_state = STATE_SHOW_LEADERBOARD # 直接跳過
-                        # 或是，如果玩家還沒輸入名字就按Q，可以回到ASK_CAMERA
-                        # 這裡假設按Q是結束整個拍照流程
                         save_leaderboard()  # 如果之前有拍過照並add_entry，這裡儲存
+                        current_player_name = ""
+                        captured_face_image_path = None
+                        current_leaderboard_entry_index = None
                         game_state = STATE_SHOW_LEADERBOARD
 
             elif photo_taken_prompt_active:  # 如果已拍完照，顯示後續選項
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_c:  # (C)apture another: 用同一個名字再拍一張 (會覆蓋或產生新索引檔)
                         photo_taken_prompt_active = False  # 清除提示，回到拍照模式
+                        if not cap or not cap.isOpened():  # 確保攝影機仍然可用
+                            initialize_camera_for_capture()
                         # 攝影機應該仍然是啟動的
                     elif event.key == pygame.K_n:  # (N)ew name: 換一個名字拍照 (等於開始一筆新的排行榜紀錄)
                         photo_taken_prompt_active = False
                         player_name_input_active = True  # 回到名稱輸入模式
                         current_player_name = ""  # 清空目前名稱
-                        # 攝影機可能需要重新初始化，或保持開啟狀態
-                        # 為了簡化，我們假設 initialize_camera_for_capture() 會處理
+                        captured_face_image_path = None  # <--- 為新名字重設
+                        current_leaderboard_entry_index = None  # <--- 新名字將是新的排行榜條目
                         if not cap or not cap.isOpened():  # 確保攝影機是開啟的
                             initialize_camera_for_capture()
                     elif event.key == pygame.K_d:  # (D)one: 完成所有拍照
                         photo_taken_prompt_active = False
                         release_camera_resources()  # 釋放攝影機
                         save_leaderboard()  # 儲存所有已加入的排行榜紀錄
+                        current_player_name = ""
+                        captured_face_image_path = None
+                        current_leaderboard_entry_index = None
                         game_state = STATE_SHOW_LEADERBOARD  # 前往排行榜
 
         elif game_state == STATE_SHOW_LEADERBOARD:  # 新增：顯示排行榜時的事件
@@ -1348,7 +1387,15 @@ while running:  #
                     current_level_index = 0
                     game_time_elapsed = 0.0  # 重設遊戲時間
                     current_score = 0  # 重設分數
-                    load_leaderboard()  # 重新載入排行榜 (以防萬一，但通常不需要)
+                    load_leaderboard()  # 重新載入排行榜
+
+                    current_player_name = ""
+                    captured_face_image_path = None
+                    current_leaderboard_entry_index = None
+                    player_name_input_active = False  # 確保輸入旗標也重設
+                    camera_capture_active = False  # 確保攝影機狀態重設
+                    photo_taken_prompt_active = False
+
                     load_level(current_level_index)  # 開始第一關
                 elif event.key == pygame.K_q:  # 按 'Q' 離開遊戲
                     running = False
@@ -1648,7 +1695,7 @@ while running:  #
             success_text_surf = font_small.render("照片已儲存!", True, (0, 255, 0))  # 綠色表示成功
             screen.blit(success_text_surf, (SCREEN_WIDTH // 2 - success_text_surf.get_width() // 2, prompt_base_y - 40))
 
-            options_text_str = "再拍一張(C) | 換名字並重拍(N) | 完成並查看排行榜(D)"
+            options_text_str = "重拍一張(C) | 換名字並重拍(N) | 完成並查看排行榜(D)"
             options_text_surf = font_tiny.render(options_text_str, True, TEXT_COLOR)
             screen.blit(options_text_surf, (SCREEN_WIDTH // 2 - options_text_surf.get_width() // 2, prompt_base_y))
 
