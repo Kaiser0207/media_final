@@ -223,7 +223,7 @@ class Player(pygame.sprite.Sprite):
                     current_image = frame_surface.copy()
 
                     if self.facing_left:
-                        frame = pygame.transform.flip(frame, True, False) # THIS IS LINE 218
+                        frame = pygame.transform.flip(frame_surface, True, False) 
                     self.image = current_image
                     if self.is_invincible:
                         if not self.is_currently_visible:
