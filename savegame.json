@@ -1,23 +1,23 @@
 {
-    "current_level_index": 3,
+    "current_level_index": 2,
     "game_state_on_save": 5,
     "player1": {
-        "pos_x": 172.0,
-        "pos_y": 620.0,
+        "pos_x": 421.24462037457283,
+        "pos_y": 470.96170990907177,
         "is_alive": true,
-        "facing_left": false,
+        "facing_left": true,
         "death_pos_x": null,
         "death_pos_y": null,
         "held_object_info": null
     },
     "player2": {
-        "pos_x": 219.0,
-        "pos_y": 626.0,
-        "is_alive": true,
+        "pos_x": 150.0,
+        "pos_y": 620.0,
+        "is_alive": false,
         "facing_left": false,
-        "death_pos_x": null,
-        "death_pos_y": null,
-        "can_spawn_item_timer": 0
+        "death_pos_x": 150.0,
+        "death_pos_y": 620.0,
+        "can_spawn_item_timer": -0.010999999999994334
     },
     "effect_manager": {
         "effects": {
@@ -43,19 +43,21 @@
         }
     },
     "boss_level_data": {
-        "boss_current_health": 100,
-        "boss_pos_x": 540.0,
-        "boss_pos_y": 180.0,
-        "boss_movement_mode": "simple_four_way",
-        "boss_move_timer": 1.9339999999999975,
-        "boss_current_direction_x": 0.0,
+        "boss_current_health": 50,
+        "boss_pos_x": 148.0,
+        "boss_pos_y": 187.0,
+        "boss_movement_mode": "teleport",
+        "boss_move_timer": 1.2950000000000002,
+        "boss_current_direction_x": 1.0,
         "boss_current_direction_y": 0.0,
-        "boss_teleport_timer": 0,
+        "boss_teleport_timer": 2.7929999999999953,
         "boss_is_teleporting_warning": false,
-        "boss_teleport_target_pos_x": null,
-        "boss_teleport_target_pos_y": null,
-        "boss_attack_timer": 1.9339999999999975
+        "boss_teleport_target_pos_x": 148.0,
+        "boss_teleport_target_pos_y": 187.0,
+        "boss_attack_timer": 1.0310000000000006
     },
     "throwable_objects": [],
-    "coop_boxes": []
+    "coop_boxes": [],
+    "game_time_elapsed": 16.25599999999988,
+    "current_score": 0
 }
