@@ -23,8 +23,8 @@ PLAYER2_COLOR = (255, 0, 0)
 PLAYER2_DEAD_COLOR = (100, 0, 0)
 CHAIN_COLOR = (150, 150, 150)
 LASER_WALL_COLOR = (255, 0, 255)
-GOAL_P1_COLOR = (100, 100, 255)
-GOAL_P2_COLOR = (255, 100, 100)
+GOAL_P1_COLOR = (255, 100, 100)
+GOAL_P2_COLOR = (100, 100, 255)
 TEXT_COLOR = (200, 200, 200)
 REVIVE_PROMPT_COLOR = (50, 200, 50)
 COOP_BOX_COLOR = (180, 140, 0)
@@ -430,10 +430,10 @@ levels_data = [  #
                         (200, SCREEN_HEIGHT // 2 - 10, SCREEN_WIDTH // 2 - 200 - 10, 10),
                         (SCREEN_WIDTH // 2 + 10, SCREEN_HEIGHT // 2 - 10, SCREEN_WIDTH // 2 - 20 - 10, 10)],
         "coop_box_start": [(SCREEN_WIDTH // 4, SCREEN_HEIGHT // 4), (SCREEN_WIDTH // 4 + 50, SCREEN_HEIGHT // 4 + 50)],
-        "spike_traps": [(40, 40, 40, 40, 1.0, 2.0, 0.0), (100, 40, 40, 40, 0.7, 1.5, 0.5),
-                        (160, 40, 40, 40, 1.2, 1.0, 1.0)],
-        "fruits": [(SCREEN_WIDTH // 2, 130, "mirror"), (200, 100, "invisible_wall"),
-                   (SCREEN_WIDTH - 200, SCREEN_HEIGHT - 100, "volcano")]
+        "spike_traps": [(100, 540, 40, 40, 1.0, 2.0, 0.0), (160, 540, 40, 40, 0.7, 1.5, 0.5),
+                        (220, 540, 40, 40, 1.2, 1.0, 1.0)],
+        "fruits": [(SCREEN_WIDTH - 220, SCREEN_HEIGHT - 200, "mirror"), (SCREEN_WIDTH - 260, SCREEN_HEIGHT - 200, "invisible_wall"),
+                   (SCREEN_WIDTH - 300, SCREEN_HEIGHT - 200, "volcano")]
     },
     {  # Level 2 Data (existing)
         "player1_start": (50, 50), "player2_start": (100, 50),
@@ -449,7 +449,7 @@ levels_data = [  #
         "fruits": [(160, SCREEN_HEIGHT // 2 + 20, "volcano"), (SCREEN_WIDTH - 140, SCREEN_HEIGHT // 2 - 30, "mirror"),
                    (SCREEN_WIDTH - 140, SCREEN_HEIGHT - 60, "invisible_wall")]
     },{
-        "player1_start": (50, SCREEN_HEIGHT // 2 + 40), "player2_start": (50, SCREEN_HEIGHT // 2 - 30),
+        "player1_start": (50, SCREEN_HEIGHT // 2 + 70), "player2_start": (50, SCREEN_HEIGHT // 2 - 50),
         "goal1_pos": (SCREEN_WIDTH - 50, 190), "goal2_pos": (SCREEN_WIDTH - 50, SCREEN_HEIGHT - 190),
         "laser_walls": [  # 衡的外面
             (0, 100, 500, 20), (0, SCREEN_HEIGHT - 100, 500, 20),
@@ -1194,6 +1194,22 @@ revive_target = None  #
 
 def draw_game_state_messages():
     global game_time_elapsed, current_score
+
+    if game_state == STATE_PLAYING and current_level_index == 0:
+        tutorial_text1 = font_tiny.render("移動：玩家1用WASD移動，玩家2用方向鍵移動", True, (255,255,0))
+        tutorial_text2 = font_tiny.render("過關目標：兩人都走到各自顏色的終點", True, (255,255,0))
+        screen.blit(tutorial_text1, (SCREEN_WIDTH//2 - tutorial_text1.get_width()//2, 40))
+        screen.blit(tutorial_text2, (SCREEN_WIDTH//2 - tutorial_text2.get_width()//2, 80))
+        tutorial_text3 = font_tiny.render("箱子: 需兩人一起才能被推動", True, (255,255,255))
+        screen.blit(tutorial_text3, (SCREEN_WIDTH//2 - tutorial_text3.get_width()//2-250, 130))
+        tutorial_text4 = font_tiny.render("地刺:縮回時可通過，伸出時碰觸會死亡", True, (255,255,255))
+        screen.blit(tutorial_text4, (SCREEN_WIDTH//2 - tutorial_text4.get_width()//2-250,SCREEN_HEIGHT -250))
+        tutorial_text5 = font_tiny.render("紫色:牆壁隱形，黃色:操控方向相反", True, (255,255,255))
+        screen.blit(tutorial_text5, (SCREEN_WIDTH//2 - tutorial_text5.get_width()//2+220,SCREEN_HEIGHT -280))
+        tutorial_text6 = font_tiny.render("紅色:會召喚隕石墜落", True, (255,255,255))
+        screen.blit(tutorial_text6, (SCREEN_WIDTH//2 - tutorial_text5.get_width()//2+220,SCREEN_HEIGHT -310))
+        tutorial_text7 = font_tiny.render("雷射牆壁:碰觸到會死亡", True, (255,255,255))
+        screen.blit(tutorial_text7, (SCREEN_WIDTH//2 - tutorial_text5.get_width()//2+220,140))
 
     if game_state == STATE_GAME_OVER:
         game_over_text = font_large.render("遊戲結束", True, TEXT_COLOR)
