@@ -12,8 +12,10 @@ def play_music(file_path):
 
 def fade_out_and_switch_music(current_file, next_file, fade_duration=2):
     def fade_thread():
-        pygame.mixer.music.load(current_file)  # 加載當前音樂
-        pygame.mixer.music.play(-1)  # 循環播放當前音樂
+        # 修正: current_file為None時不load
+        if current_file:
+            pygame.mixer.music.load(current_file)  # 加載當前音樂
+            pygame.mixer.music.play(-1)  # 循環播放當前音樂
 
         # 漸變音量到 0
         start_time = time.time()

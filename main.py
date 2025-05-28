@@ -165,6 +165,8 @@ face_cascade = None
 camera_frame_surface = None # Pygame surface for camera feed
 loaded_face_images_cache = {} # Cache for loaded face images for leaderboard
 
+boss_music_playing = False  # 追蹤BOSS_MUSIC是否正在播放
+
 def show_opencv_paint_window():  #
     if use_opencv:
         cv2.imshow(opencv_window_name, paint_surface)
@@ -1537,9 +1539,17 @@ while running:  #
 
         if boss_enemy:
             # --- 音樂切換邏輯 ---
-            if not final_battle_music_started and boss_enemy.current_health <= boss_enemy.max_health / 2:
+            # 新增：boss血量大於一半時自動播放BOSS_MUSIC
+            if boss_enemy.current_health > boss_enemy.max_health / 2:
+                if not boss_music_playing:
+                    fade_out_and_switch_music(None, BOSS_MUSIC, fade_duration=0)
+                    boss_music_playing = True
+                final_battle_music_started = False  # 確保切回boss音樂時重設final battle flag
+            elif not final_battle_music_started and boss_enemy.current_health <= boss_enemy.max_health / 2:
                 fade_out_and_switch_music(BOSS_MUSIC, FINAL_BATTLE_MUSIC, fade_duration=2)
                 final_battle_music_started = True
+                boss_music_playing = False  # 進入final battle時重設boss音樂flag
+
             boss_enemy.update(dt, player_sprites, SCREEN_WIDTH, SCREEN_HEIGHT)
             # Check for P1's thrown object hitting boss
             for obj in throwable_objects_group:
