@@ -281,7 +281,7 @@ class boss_animation:
 
         return frames
 
-    # 新增的函数：加载骑士的闲置动画
+
     def load_boos_run_animation(target_width, target_height):
         """
         Load the boss run animation from the second vertical segment of the boss.png image.
@@ -297,6 +297,34 @@ class boss_animation:
             raise ValueError("The boss.png image does not have enough vertical segments to extract the second part.")
 
         boss_sprite_sheet = boss_frames[1]  # Use the second vertical segment
+        frame_width = boss_sprite_sheet.get_width() // 17  # Assuming 8 frames horizontally
+        frame_height = boss_sprite_sheet.get_height()
+
+        frames = []
+        for i in range(8):
+            # Slice each frame
+            frame = boss_sprite_sheet.subsurface((i * frame_width, 0, frame_width, frame_height))
+            # Scale the frame to the target dimensions
+            scaled_frame = pygame.transform.smoothscale(frame, (target_width, target_height))
+            frames.append(scaled_frame)
+
+        return frames
+
+    def load_boos_run2_animation(target_width, target_height):
+        """
+        Load the boss run animation from the second vertical segment of the boss.png image.
+        Args:
+            target_width (int): Final scaled width of each frame.
+            target_height (int): Final scaled height of each frame.
+        Returns:
+            list: A list of scaled pygame.Surface objects representing the animation frames.
+        """
+        # Get the second vertical segment
+        boss_frames = boss_animation.split_boss_image_vertically("./plays_animation_art/boss.png")
+        if len(boss_frames) < 2:
+            raise ValueError("The boss.png image does not have enough vertical segments to extract the second part.")
+
+        boss_sprite_sheet = boss_frames[2]  # Use the second vertical segment
         frame_width = boss_sprite_sheet.get_width() // 17  # Assuming 8 frames horizontally
         frame_height = boss_sprite_sheet.get_height()
 

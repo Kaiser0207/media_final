@@ -12,6 +12,8 @@ class Boss(pygame.sprite.Sprite):
         super().__init__()
         # 加载运行动画帧
         self.run_animation_frames = boss_animation.load_boos_run_animation(200, 200)
+        self.run2_animation_frames = None  # For phase 2 animation
+        self.phase2_animation_switched = False  # To ensure switch happens once
         self.current_frame_index = 0
         self.animation_timer = 0
         self.animation_speed = 0.1  # 每帧持续时间（秒）
@@ -39,6 +41,13 @@ class Boss(pygame.sprite.Sprite):
 
     def update(self, dt, players_group, screen_width, screen_height):
         # --- Movement ---
+        # Switch to phase 2 animation if health <= 50
+        if self.current_health <= self.max_health / 2 and not self.phase2_animation_switched:
+            if self.run2_animation_frames is None:
+                self.run2_animation_frames = boss_animation.load_boos_run2_animation(200, 200)
+            self.run_animation_frames = self.run2_animation_frames
+            self.phase2_animation_switched = True
+
         if self.current_health <= self.max_health / 2 and self.movement_mode == "simple_four_way":
             self.movement_mode = "teleport" # Switch to teleport below half health
             self.teleport_timer = self.teleport_cooldown # Allow immediate first teleport
@@ -64,10 +73,26 @@ class Boss(pygame.sprite.Sprite):
             if self.animation_timer >= self.animation_speed:
                 self.animation_timer = 0
                 self.current_frame_index = (self.current_frame_index + 1) % len(self.run_animation_frames)
-                self.image = self.run_animation_frames[self.current_frame_index]
+                frame = self.run_animation_frames[self.current_frame_index]
+                # 判断是否向左移动
+                if self.current_direction.x < 0:
+                    self.image = pygame.transform.flip(frame, True, False)
+                else:
+                    self.image = frame
 
         elif self.movement_mode == "teleport":
             self.teleport_timer += dt
+            # 播放奔跑动画（血量小于50时也播放奔跑动画）
+            self.animation_timer += dt
+            if self.animation_timer >= self.animation_speed:
+                self.animation_timer = 0
+                self.current_frame_index = (self.current_frame_index + 1) % len(self.run_animation_frames)
+                frame = self.run_animation_frames[self.current_frame_index]
+                # 判断是否向左移动
+                if self.current_direction.x < 0:
+                    self.image = pygame.transform.flip(frame, True, False)
+                else:
+                    self.image = frame
             if self.is_teleporting_warning:
                 if self.teleport_timer >= self.teleport_warning_duration:
                     self.is_teleporting_warning = False
@@ -227,3 +252,4 @@ class ThrowableObject(pygame.sprite.Sprite):
 
     def draw(self, surface):
         surface.blit(self.image, self.rect)
+

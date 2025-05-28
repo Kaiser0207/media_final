@@ -98,6 +98,7 @@ if not os.path.exists(FACE_IMAGE_SAVE_DIR):
 # --- 音樂檔案路徑 ---
 LEVEL_1_MUSIC = os.path.join("game_music", "04 - Silent Forest.mp3")
 BOSS_MUSIC = os.path.join("game_music", "10 - Lost Shrine.mp3")
+FINAL_BATTLE_MUSIC = os.path.join("game_music", "21 - Final Battle - For Love.mp3")
 
 # 圖片載入
 box_img = pygame.image.load("box.png").convert_alpha()  #
@@ -1173,8 +1174,13 @@ def draw_leaderboard_screen():
     screen.blit(restart_prompt_surf, (SCREEN_WIDTH // 2 - restart_prompt_surf.get_width() // 2, SCREEN_HEIGHT - 70))
 # ---遊戲初始化---
 game_state = STATE_START_SCREEN  #
+last_game_state = None  # Track previous state for music logic
 # current_level_index = 0 # Already defined above
 running = True  #
+
+# --- 音樂初始化 ---
+pygame.mixer.init()
+start_screen_music_played = False
 
 # --- 閃爍文字相關變數 ---
 prompt_blink_timer = 0.0  #
@@ -1269,6 +1275,8 @@ def draw_game_state_messages():
             screen.blit(p1_action_hint, (10, SCREEN_HEIGHT - 100))
 
 # ---遊戲主程式循環---
+# Add a flag to track if final battle music has started
+final_battle_music_started = False
 while running:  #
     dt = clock.tick(FPS) / 1000.0  #
     keys = pygame.key.get_pressed()  #
@@ -1512,6 +1520,10 @@ while running:  #
         player2.update_boss_interactions(dt)
 
         if boss_enemy:
+            # --- 音樂切換邏輯 ---
+            if not final_battle_music_started and boss_enemy.current_health <= boss_enemy.max_health / 2:
+                fade_out_and_switch_music(BOSS_MUSIC, FINAL_BATTLE_MUSIC, fade_duration=2)
+                final_battle_music_started = True
             boss_enemy.update(dt, player_sprites, SCREEN_WIDTH, SCREEN_HEIGHT)
             # Check for P1's thrown object hitting boss
             for obj in throwable_objects_group:
@@ -1586,6 +1598,17 @@ while running:  #
     elif game_state == STATE_CAMERA_INPUT:
         if camera_capture_active and not player_name_input_active and not photo_taken_prompt_active:
             process_camera_frame()  # Update camera_frame_surface for display
+
+    # --- 音樂播放控制 ---
+    if game_state == STATE_START_SCREEN and last_game_state != STATE_START_SCREEN:
+        if not start_screen_music_played:
+            pygame.mixer.music.load('game_music/xDeviruchi - The Final of The Fantasy.wav')
+            pygame.mixer.music.play(-1)  # Loop indefinitely
+            start_screen_music_played = True
+    elif game_state != STATE_START_SCREEN and last_game_state == STATE_START_SCREEN:
+        pygame.mixer.music.stop()
+        start_screen_music_played = False
+    last_game_state = game_state
 
     # ---遊戲畫面繪製---
     screen.fill(BLACK)  #
@@ -1766,3 +1789,4 @@ while running:  #
 
 release_camera_resources()
 pygame.quit()
+
