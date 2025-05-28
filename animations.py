@@ -253,3 +253,88 @@ class Knight_animation:
         """
         frames = Knight_animation.load_knight_death_animation(target_width, target_height)
         return frames[::-1]
+
+class boss_animation:
+    def split_boss_image_vertically(image_path):
+        """
+        Split the boss.png image vertically into 7 equal parts without scaling.
+
+        Args:
+            image_path (str): Path to the boss.png image.
+
+        Returns:
+            list: A list of pygame.Surface objects representing the split images.
+        """
+        if not os.path.exists(image_path):
+            raise FileNotFoundError(f"Image not found: {image_path}")
+
+        # Load the image
+        boss_image = pygame.image.load(image_path).convert_alpha()
+        frame_width = boss_image.get_width()
+        frame_height = boss_image.get_height() // 7
+
+        frames = []
+        for i in range(7):
+            # Slice each vertical segment
+            frame = boss_image.subsurface((0, i * frame_height, frame_width, frame_height))
+            frames.append(frame)
+
+        return frames
+
+    # 新增的函数：加载骑士的闲置动画
+    def load_boos_run_animation(target_width, target_height):
+        """
+        Load the boss run animation from the second vertical segment of the boss.png image.
+        Args:
+            target_width (int): Final scaled width of each frame.
+            target_height (int): Final scaled height of each frame.
+        Returns:
+            list: A list of scaled pygame.Surface objects representing the animation frames.
+        """
+        # Get the second vertical segment
+        boss_frames = boss_animation.split_boss_image_vertically("./plays_animation_art/boss.png")
+        if len(boss_frames) < 2:
+            raise ValueError("The boss.png image does not have enough vertical segments to extract the second part.")
+
+        boss_sprite_sheet = boss_frames[1]  # Use the second vertical segment
+        frame_width = boss_sprite_sheet.get_width() // 17  # Assuming 8 frames horizontally
+        frame_height = boss_sprite_sheet.get_height()
+
+        frames = []
+        for i in range(8):
+            # Slice each frame
+            frame = boss_sprite_sheet.subsurface((i * frame_width, 0, frame_width, frame_height))
+            # Scale the frame to the target dimensions
+            scaled_frame = pygame.transform.smoothscale(frame, (target_width, target_height))
+            frames.append(scaled_frame)
+
+        return frames
+
+if __name__ == "__main__":
+    pygame.init()
+    screen = pygame.display.set_mode((800, 600))
+    pygame.display.set_caption("Boss Run Animation Test")
+    clock = pygame.time.Clock()
+
+    # Load boss run animation frames
+    boss_run_frames = boss_animation.load_boos_run_animation(200,200)
+    frame_index = 0
+
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+        screen.fill((0, 0, 0))  # Clear screen with black
+
+        # Display the current frame
+        screen.blit(boss_run_frames[frame_index], (300, 200))
+
+        # Update frame index
+        frame_index = (frame_index + 1) % len(boss_run_frames)
+
+        pygame.display.flip()
+        clock.tick(10)  # Limit to 10 frames per second
+
+    pygame.quit()

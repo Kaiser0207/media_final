@@ -1,4 +1,3 @@
-import os
 import pygame
 
 # --- 音樂初始化 ---

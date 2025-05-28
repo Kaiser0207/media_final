@@ -1,5 +1,6 @@
 import pygame
 import random
+from animations import *
 
 SCREEN_WIDTH = 1080
 SCREEN_HEIGHT = 720
@@ -9,8 +10,13 @@ PLAYER_RADIUS = 15 # Used for scaling throwable, can be adjusted
 class Boss(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
-        self.image = pygame.Surface([100, 100])
-        self.image.fill((200, 0, 0))
+        # 加载运行动画帧
+        self.run_animation_frames = boss_animation.load_boos_run_animation(200, 200)
+        self.current_frame_index = 0
+        self.animation_timer = 0
+        self.animation_speed = 0.1  # 每帧持续时间（秒）
+
+        self.image = self.run_animation_frames[self.current_frame_index]  # 初始帧
         self.rect = self.image.get_rect(center=(x, y))
         self.pos = pygame.math.Vector2(x, y)
         self.max_health = 100
@@ -52,6 +58,13 @@ class Boss(pygame.sprite.Sprite):
             self.pos.x = max(self.rect.width // 2, min(self.pos.x, screen_width - self.rect.width // 2))
             self.pos.y = max(self.rect.height // 2, min(self.pos.y, screen_height - self.rect.height // 2))
             self.rect.center = self.pos
+
+            # 更新动画帧
+            self.animation_timer += dt
+            if self.animation_timer >= self.animation_speed:
+                self.animation_timer = 0
+                self.current_frame_index = (self.current_frame_index + 1) % len(self.run_animation_frames)
+                self.image = self.run_animation_frames[self.current_frame_index]
 
         elif self.movement_mode == "teleport":
             self.teleport_timer += dt
