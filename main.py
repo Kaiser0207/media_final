@@ -170,6 +170,8 @@ paint_surface = np.zeros((paint_surface_height, paint_surface_width, 3), dtype=n
 game_time_elapsed = 0.0
 current_score = 0
 leaderboard_data = []
+final_game_time = 0.0
+final_player_score = 0
 
 # Variables for camera input state
 camera_capture_active = False
@@ -181,8 +183,6 @@ current_capture_player_index = 0 # 0 for P1, 1 for P2
 photo_taken_for_current_player_flag = False # Flag if photo was taken/skipped for current player_capture_index
 post_capture_prompt_active = False # If true, shows options after a capture/skip attempt
 
-final_game_time = 0.0
-final_player_score = 0
 
 # OpenCV related
 cap = None
@@ -240,8 +240,8 @@ class Fruit(pygame.sprite.Sprite): #
             color = INVISIBLE_WALL_COLOR
         elif fruit_type == "volcano":
             color = VOLCANO_FRUIT_COLOR
-        elif fruit_type == "score":
-            color = SCORE_FRUIT_COLOR #
+        #elif fruit_type == "score":
+        #    color = SCORE_FRUIT_COLOR 應該無使用
         else:
             color = (255, 255, 255)
         pygame.draw.circle(self.image, color, (FRUIT_RADIUS, FRUIT_RADIUS), FRUIT_RADIUS)
@@ -898,6 +898,7 @@ def save_game_state(): # MODIFIED to handle saving from pause
         "boss_level_data": None,
         "throwable_objects": [],
         "coop_boxes": [],
+        "fruits": [],
         "game_time_elapsed": game_time_elapsed, # Save game time
         "current_score": current_score # Save current score
     }
@@ -956,6 +957,16 @@ def save_game_state(): # MODIFIED to handle saving from pause
                 "pos_x": box.pos.x,
                 "pos_y": box.pos.y
             })
+            # 儲存所有水果的狀態
+        fruits_data = []
+        for fruit in fruit_sprites:
+            fruits_data.append({
+                "pos_x": fruit.rect.centerx,
+                "pos_y": fruit.rect.centery,
+                "fruit_type": fruit.fruit_type,
+            })
+        save_data["fruits"] = fruits_data
+
 
     try:
         with open(SAVE_FILE, 'w') as f:
@@ -1050,6 +1061,12 @@ def load_game_state_from_file():
         loaded_coop_boxes = load_data.get("coop_boxes", [])
         for box_data in loaded_coop_boxes:
             coop_box_group.add(CoopBox(box_data["pos_x"], box_data["pos_y"], img=box_img))
+
+        fruit_sprites.empty()
+        loaded_fruits = load_data.get("fruits", [])
+        for fruit_data in loaded_fruits:
+            # 根據你的 Fruit 類別建構子調整以下一行
+            fruit_sprites.add(Fruit(fruit_data["pos_x"], fruit_data["pos_y"], fruit_data["fruit_type"]))
 
     # Now, game_state reflects the loaded gameplay state (PLAYING or BOSS_LEVEL).
     # Restore player specifics
@@ -1731,11 +1748,11 @@ while running: #
             if player.is_alive:
                 collided_fruits = pygame.sprite.spritecollide(player, fruit_sprites, True)
                 for fruit in collided_fruits:
-                    if fruit.fruit_type == "score": #
-                        if current_score < MAX_TOTAL_SCORE: #
+
+                    if current_score < MAX_TOTAL_SCORE: #
                             current_score += SCORE_FRUIT_VALUE #
-                    else:
-                        effect_manager.apply_effect(fruit.fruit_type, player.player_id)
+
+                    effect_manager.apply_effect(fruit.fruit_type, player.player_id)
 
         if effect_manager.should_spawn_meteor(): #
             spawn_x = random.randint(METEOR_SIZE, SCREEN_WIDTH - METEOR_SIZE);
@@ -1806,10 +1823,12 @@ while running: #
                                         min(p2_new_pos.y, SCREEN_HEIGHT - player2.rect.height // 2));
                     player2.rect.center = player2.pos
 
-        goal1.update_status(player1);
+        goal1.update_status(player1)
         goal2.update_status(player2) #
         if goal1.is_active and goal2.is_active and player1.is_alive and player2.is_alive: #
             current_level_index += 1 #
+            # 關卡過關時累加分數
+            final_player_score += current_score
             load_level(current_level_index) # This might change game_state to STATE_BOSS_LEVEL
         if not player1.is_alive and not player2.is_alive: game_state = STATE_GAME_OVER #
 
