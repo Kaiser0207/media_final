@@ -30,7 +30,7 @@ class Boss(pygame.sprite.Sprite):
         self.current_direction = pygame.math.Vector2(0,0)
         self.teleport_timer = 0
         self.teleport_cooldown = 5 # Seconds
-        self.teleport_warning_duration = 0.5
+        self.teleport_warning_duration = 1 # Seconds
         self.is_teleporting_warning = False
         self.teleport_target_pos = None
 
