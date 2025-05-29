@@ -1,3 +1,5 @@
+import math
+
 import pygame
 import random
 from animations import *
@@ -196,12 +198,36 @@ class BossProjectile(pygame.sprite.Sprite):
             self.kill()
 
 class ThrowableObject(pygame.sprite.Sprite):
-    def __init__(self, x, y, spawned_by_player_id):
+    def __init__(self, x, y, spawned_by_player_id,detected_shape):
         super().__init__()
         self.original_image = pygame.Surface([PLAYER_RADIUS * 1.8, PLAYER_RADIUS * 1.8]) # Slightly smaller than player
         if spawned_by_player_id == 1: # P2 (Witch) spawns it
-            self.original_image.fill((150, 50, 200)) # Purple-ish drawn object
-            pygame.draw.rect(self.original_image, (200,100,250), self.original_image.get_rect(), 3)
+            print(detected_shape)
+            object_size = PLAYER_RADIUS * 1.8
+            fill_color = (150, 50, 200)  # 紫色
+            border_color = (200, 100, 250)  # 淺紫色邊框
+            # 繪製形狀
+            if detected_shape == "Circle":
+                # 圓形
+                radius = object_size // 2
+                pygame.draw.circle(self.original_image, fill_color, (object_size // 2, object_size // 2), radius)
+                # 圓形通常不需要額外的邊框，但如果需要可以再畫一個
+                pygame.draw.circle(self.original_image, border_color, (object_size // 2, object_size // 2), radius, 3)
+            elif detected_shape == "Triangle":
+                # 三角形 (等邊三角形)
+                # 計算頂點位置
+                height = object_size * (math.sqrt(3) / 2)  # 等邊三角形高
+                points = [
+                    (object_size // 2, object_size - height),  # 頂點
+                    (0, object_size),  # 左下角
+                    (object_size, object_size)  # 右下角
+                ]
+                pygame.draw.polygon(self.original_image, fill_color, points)
+                pygame.draw.polygon(self.original_image, border_color, points, 3)  # 邊框
+            elif detected_shape == "Rectangle":  # 預設為矩形，或當形狀名稱不匹配時
+                # 矩形
+                self.original_image.fill(fill_color)
+                pygame.draw.rect(self.original_image, border_color, self.original_image.get_rect(), 3)
         else: # Default or P1 related (though P1 doesn't spawn)
             self.original_image.fill((100, 100, 100)) # Grey
 

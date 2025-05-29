@@ -8,7 +8,7 @@ import random
 import json
 import os
 from music import *
-from drawing import start_drawing_thread
+from drawing import start_drawing_thread, get_shape_from_queue
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -1568,11 +1568,11 @@ while running: #
                     elif event.key == DRAW_ITEM_KEY_P2: #
                         target_spawn_pos = player1.pos if player1.is_alive else pygame.math.Vector2(
                             ITEM_SPAWN_POS_DEFAULT) #
-                        player2.handle_draw_item_key(throwable_objects_group, target_spawn_pos) #
+                        player2.handle_draw_item_key(throwable_objects_group, target_spawn_pos,get_shape_from_queue()) #
 
             # --- STATE_PAUSED ---
             elif game_state == STATE_PAUSED: # NEW: Event handling for pause menu #
-                if event.key == pygame.K_UP: #
+                if event.key == pygame.K_UP: #dw
                     pause_menu_selected_index = (pause_menu_selected_index - 1) % len(pause_menu_options) #
                 elif event.key == pygame.K_DOWN: #
                     pause_menu_selected_index = (pause_menu_selected_index + 1) % len(pause_menu_options) #

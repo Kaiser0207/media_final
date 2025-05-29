@@ -4,6 +4,8 @@ from boss_entities import ThrowableObject # <--- ADD THIS LINE
 # 如有需要，导入 math、random 及 main.py 里用到的常量
 import random
 
+from drawing import drawing_window
+
 SCREEN_WIDTH = 1080
 SCREEN_HEIGHT = 720
 PLAYER_RADIUS = 15
@@ -445,7 +447,7 @@ class Player(pygame.sprite.Sprite):
                         break
         return None  # No object spawned here
 
-    def handle_draw_item_key(self, throwable_objects_group, other_player_pos):  # P2 (Witch)
+    def handle_draw_item_key(self, throwable_objects_group, other_player_pos,detected_shape):  # P2 (Witch)
         if self.player_id == 1 and self.is_alive and self.can_spawn_item_timer <= 0:
             self.can_spawn_item_timer = self.item_spawn_cooldown  # Reset cooldown
             # Spawn item near P1 (other_player_pos) or a fixed spot
@@ -455,7 +457,7 @@ class Player(pygame.sprite.Sprite):
             spawn_x = max(PLAYER_RADIUS, min(spawn_x, SCREEN_WIDTH - PLAYER_RADIUS))
             spawn_y = max(PLAYER_RADIUS, min(spawn_y, SCREEN_HEIGHT - PLAYER_RADIUS))
 
-            new_obj = ThrowableObject(spawn_x, spawn_y, self.player_id) #
+            new_obj = ThrowableObject(spawn_x, spawn_y, self.player_id,detected_shape) #
             throwable_objects_group.add(new_obj)
             return new_obj  # Return the spawned object
         return None

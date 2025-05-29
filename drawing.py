@@ -1,6 +1,9 @@
 import cv2
 import numpy as np
 import threading
+import queue
+
+shape_queue = queue.Queue()
 
 def drawing_window():
     # Create a blank canvas
@@ -23,6 +26,8 @@ def drawing_window():
             last_point = None
             # Detect shape after drawing
             shape_detected = detect_shape(canvas)
+            # 将检测到的形状放入队列
+            shape_queue.put(shape_detected)
 
     def detect_shape(image):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -57,4 +62,9 @@ def drawing_window():
 def start_drawing_thread():
     thread = threading.Thread(target=drawing_window, daemon=True)
     thread.start()
+
+def get_shape_from_queue():
+    if not shape_queue.empty():
+        return shape_queue.get()
+    return "None"
 
