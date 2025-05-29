@@ -489,7 +489,34 @@ class SpikeTrap(pygame.sprite.Sprite): #
 
 # --- 關卡資料 ---
 levels_data = [ #
-{
+    { # Level 1 Data (existing)
+        "player1_start": (100, SCREEN_HEIGHT // 2), "player2_start": (150, SCREEN_HEIGHT // 2),
+        "goal1_pos": (SCREEN_WIDTH - 50, 150), "goal2_pos": (SCREEN_WIDTH - 50, SCREEN_HEIGHT - 150),
+        "laser_walls": [(SCREEN_WIDTH // 2 - 10, 150, 20, SCREEN_HEIGHT - 300),
+                        (200, SCREEN_HEIGHT // 2 - 10, SCREEN_WIDTH // 2 - 200 - 10, 10),
+                        (SCREEN_WIDTH // 2 + 10, SCREEN_HEIGHT // 2 - 10, SCREEN_WIDTH // 2 - 20 - 10, 10)],
+        "coop_box_start": [(SCREEN_WIDTH // 4, SCREEN_HEIGHT // 4), (SCREEN_WIDTH // 4 + 50, SCREEN_HEIGHT // 4 + 50)],
+        "spike_traps": [(100, 540, 40, 40, 1.0, 2.0, 0.0), (160, 540, 40, 40, 0.7, 1.5, 0.5),
+                        (220, 540, 40, 40, 1.2, 1.0, 1.0)],
+        "fruits": [(SCREEN_WIDTH - 220, SCREEN_HEIGHT - 200, "mirror"),
+                   (SCREEN_WIDTH - 260, SCREEN_HEIGHT - 200, "invisible_wall"),
+                   (SCREEN_WIDTH - 300, SCREEN_HEIGHT - 200, "volcano")]
+    },
+    { # Level 2 Data (existing)
+        "player1_start": (50, 50), "player2_start": (100, 50),
+        "goal1_pos": (200, SCREEN_HEIGHT - 100), "goal2_pos": (200, SCREEN_HEIGHT - 50),
+        "laser_walls": [(0, 0, SCREEN_WIDTH, 20), (0, SCREEN_HEIGHT - 20, SCREEN_WIDTH, 20), (0, 0, 20, SCREEN_HEIGHT),
+                        (SCREEN_WIDTH - 20, 0, 20, SCREEN_HEIGHT), (150, 20, 20, SCREEN_HEIGHT // 2 - 25),
+                        (150, SCREEN_HEIGHT // 2 + 50, 20, SCREEN_HEIGHT // 2 - 95),
+                        (SCREEN_WIDTH - 150, 20, 20, SCREEN_HEIGHT // 2 - 100),
+                        (SCREEN_WIDTH - 150, SCREEN_HEIGHT // 2, 20, SCREEN_HEIGHT // 2 - 100),
+                        (150, SCREEN_HEIGHT // 3, SCREEN_WIDTH - 300, 20),
+                        (150, SCREEN_HEIGHT * 2 // 3, SCREEN_WIDTH - 300, 20)],
+        "coop_box_start": [(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)],
+        "fruits": [(160, SCREEN_HEIGHT // 2 + 20, "volcano"), (SCREEN_WIDTH - 140, SCREEN_HEIGHT // 2 - 30, "mirror"),
+                   (SCREEN_WIDTH - 140, SCREEN_HEIGHT - 60, "invisible_wall")]
+    },
+    {
         "player1_start": (40, SCREEN_HEIGHT // 2 + 70), "player2_start": (40, SCREEN_HEIGHT // 2 - 50),
         "goal1_pos": (SCREEN_WIDTH - 50, 190), "goal2_pos": (SCREEN_WIDTH - 50, SCREEN_HEIGHT - 190),
         "laser_walls": [ # 衡的外面
@@ -524,33 +551,6 @@ levels_data = [ #
         "fruits": [(SCREEN_WIDTH - 260, SCREEN_HEIGHT - 180, "mirror"),
                    (40,  200, "invisible_wall"),
                    (SCREEN_WIDTH - 500, SCREEN_HEIGHT - 350, "volcano")]
-    },
-    { # Level 1 Data (existing)
-        "player1_start": (100, SCREEN_HEIGHT // 2), "player2_start": (150, SCREEN_HEIGHT // 2),
-        "goal1_pos": (SCREEN_WIDTH - 50, 150), "goal2_pos": (SCREEN_WIDTH - 50, SCREEN_HEIGHT - 150),
-        "laser_walls": [(SCREEN_WIDTH // 2 - 10, 150, 20, SCREEN_HEIGHT - 300),
-                        (200, SCREEN_HEIGHT // 2 - 10, SCREEN_WIDTH // 2 - 200 - 10, 10),
-                        (SCREEN_WIDTH // 2 + 10, SCREEN_HEIGHT // 2 - 10, SCREEN_WIDTH // 2 - 20 - 10, 10)],
-        "coop_box_start": [(SCREEN_WIDTH // 4, SCREEN_HEIGHT // 4), (SCREEN_WIDTH // 4 + 50, SCREEN_HEIGHT // 4 + 50)],
-        "spike_traps": [(100, 540, 40, 40, 1.0, 2.0, 0.0), (160, 540, 40, 40, 0.7, 1.5, 0.5),
-                        (220, 540, 40, 40, 1.2, 1.0, 1.0)],
-        "fruits": [(SCREEN_WIDTH - 220, SCREEN_HEIGHT - 200, "mirror"),
-                   (SCREEN_WIDTH - 260, SCREEN_HEIGHT - 200, "invisible_wall"),
-                   (SCREEN_WIDTH - 300, SCREEN_HEIGHT - 200, "volcano")]
-    },
-    { # Level 2 Data (existing)
-        "player1_start": (50, 50), "player2_start": (100, 50),
-        "goal1_pos": (200, SCREEN_HEIGHT - 100), "goal2_pos": (200, SCREEN_HEIGHT - 50),
-        "laser_walls": [(0, 0, SCREEN_WIDTH, 20), (0, SCREEN_HEIGHT - 20, SCREEN_WIDTH, 20), (0, 0, 20, SCREEN_HEIGHT),
-                        (SCREEN_WIDTH - 20, 0, 20, SCREEN_HEIGHT), (150, 20, 20, SCREEN_HEIGHT // 2 - 25),
-                        (150, SCREEN_HEIGHT // 2 + 50, 20, SCREEN_HEIGHT // 2 - 95),
-                        (SCREEN_WIDTH - 150, 20, 20, SCREEN_HEIGHT // 2 - 100),
-                        (SCREEN_WIDTH - 150, SCREEN_HEIGHT // 2, 20, SCREEN_HEIGHT // 2 - 100),
-                        (150, SCREEN_HEIGHT // 3, SCREEN_WIDTH - 300, 20),
-                        (150, SCREEN_HEIGHT * 2 // 3, SCREEN_WIDTH - 300, 20)],
-        "coop_box_start": [(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)],
-        "fruits": [(160, SCREEN_HEIGHT // 2 + 20, "volcano"), (SCREEN_WIDTH - 140, SCREEN_HEIGHT // 2 - 30, "mirror"),
-                   (SCREEN_WIDTH - 140, SCREEN_HEIGHT - 60, "invisible_wall")]
     },
     # Boss level will be handled separately, not in this list structure.
 ]
