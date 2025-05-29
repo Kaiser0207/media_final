@@ -8,6 +8,7 @@ import random
 import json
 import os
 from music import *
+from drawing import start_drawing_thread
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -1370,6 +1371,8 @@ REVIVE_HOLD_TIME = 1.5 #
 revive_progress = 0.0 #
 revive_target = None #
 
+# Start the drawing window in a separate thread
+start_drawing_thread()
 
 def draw_game_state_messages():
     global game_time_elapsed, current_score
@@ -2169,3 +2172,4 @@ while running: #
 
 release_camera_resources()
 pygame.quit()
+
