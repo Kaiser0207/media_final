@@ -505,13 +505,7 @@ levels_data = [ #
     { # Level 2 Data (existing)
         "player1_start": (50, 50), "player2_start": (100, 50),
         "goal1_pos": (200, SCREEN_HEIGHT - 100), "goal2_pos": (200, SCREEN_HEIGHT - 50),
-        "laser_walls": [(0, 0, SCREEN_WIDTH, 20), (0, SCREEN_HEIGHT - 20, SCREEN_WIDTH, 20), (0, 0, 20, SCREEN_HEIGHT),
-                        (SCREEN_WIDTH - 20, 0, 20, SCREEN_HEIGHT), (150, 20, 20, SCREEN_HEIGHT // 2 - 25),
-                        (150, SCREEN_HEIGHT // 2 + 50, 20, SCREEN_HEIGHT // 2 - 95),
-                        (SCREEN_WIDTH - 150, 20, 20, SCREEN_HEIGHT // 2 - 100),
-                        (SCREEN_WIDTH - 150, SCREEN_HEIGHT // 2, 20, SCREEN_HEIGHT // 2 - 100),
-                        (150, SCREEN_HEIGHT // 3, SCREEN_WIDTH - 300, 20),
-                        (150, SCREEN_HEIGHT * 2 // 3, SCREEN_WIDTH - 300, 20)],
+        "laser_walls": [],
         "coop_box_start": [(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)],
         "fruits": [(160, SCREEN_HEIGHT // 2 + 20, "volcano"), (SCREEN_WIDTH - 140, SCREEN_HEIGHT // 2 - 30, "mirror"),
                    (SCREEN_WIDTH - 140, SCREEN_HEIGHT - 60, "invisible_wall")]
@@ -520,34 +514,10 @@ levels_data = [ #
         "player1_start": (40, SCREEN_HEIGHT // 2 + 70), "player2_start": (40, SCREEN_HEIGHT // 2 - 50),
         "goal1_pos": (SCREEN_WIDTH - 50, 190), "goal2_pos": (SCREEN_WIDTH - 50, SCREEN_HEIGHT - 190),
         "laser_walls": [ # 衡的外面
-            (0, 100, 550, 20), (0, SCREEN_HEIGHT - 100, 550, 20),
-            (600, 100, 150, 20), (600, SCREEN_HEIGHT - 100, 150, 20),
-            (800, 100, 90, 20), (800, SCREEN_HEIGHT - 100, 100, 20),
-            # 值得裡面
-            (80, 120, 20, 150), (80, SCREEN_HEIGHT - 260, 20, 180),
-            (180, 210, 20, 150), (180, SCREEN_HEIGHT - 340, 20, 180),
-            (280, 120, 20, 150), (280, SCREEN_HEIGHT - 260, 20, 180),
-            (380, 210, 20, 150), (380, SCREEN_HEIGHT - 340, 20, 180),
-            (480, 80, 20, 180), (480, SCREEN_HEIGHT - 250, 20, 180),
-
-            # 終點乓圈圈
-            (980, 330, 100, 20), (980, SCREEN_HEIGHT - 330, 150, 20),
-            (950, 150, 20, 150), (950, SCREEN_HEIGHT - 300, 20, 150),
-
-            (850, 220, 20, 150), (850, SCREEN_HEIGHT - 350, 20, 180),
-
-            (650, SCREEN_HEIGHT // 2 -140, 20, 300),
-
-            (750, 100, 20, 220), (750, SCREEN_HEIGHT - 300, 20, 220),
-            (0, SCREEN_HEIGHT // 2, 500, 20)],
+            ],
         "coop_box_start": [(1010, 120), (1050, 120), (SCREEN_WIDTH - 70, SCREEN_HEIGHT - 120),
                            (SCREEN_WIDTH - 30, SCREEN_HEIGHT - 120)],
-        "spike_traps": [(750, 325, 40, 40, 1.5, 2.5, 0.0), (750, 365, 40, 40, 1.5, 2.5, 0.0),
-                        (75, 300, 40, 40, 1.5, 2.5, 1.5), (175, 570, 40, 40, 1.5, 2.5, 0.4),
-                        (275, 300, 40, 40, 1.5, 2.5, 0.3), (375, 570, 40, 40, 1.5, 2.5, 1.6),
-                        (475, 300, 40, 40, 1.5, 2.5, 2.5), (475, 400, 40, 40, 1.5, 2.5, 0.5),
-                        (40, 40, 40, 40, 1.0, 2.0, 0.0), (100, 40, 40, 40, 0.7, 1.5, 0.5),
-                        (160, 40, 40, 40, 1.2, 1.0, 1.0)],
+        "spike_traps": [],
         "fruits": [(SCREEN_WIDTH - 260, SCREEN_HEIGHT - 180, "mirror"),
                    (40,  200, "invisible_wall"),
                    (SCREEN_WIDTH - 500, SCREEN_HEIGHT - 350, "volcano")]
@@ -1829,7 +1799,7 @@ while running: #
                     player2.pos.y = max(player2.rect.height // 2,
                                         min(p2_new_pos.y, SCREEN_HEIGHT - player2.rect.height // 2));
                     player2.rect.center = player2.pos
-        #print(final_player_score)debug用
+        #print(final_player_score) debug
         goal1.update_status(player1)
         goal2.update_status(player2) #
         if goal1.is_active and goal2.is_active and player1.is_alive and player2.is_alive: #
@@ -1841,7 +1811,7 @@ while running: #
 
     elif game_state == STATE_BOSS_LEVEL:
         game_time_elapsed += dt
-        #print(final_player_score)debug用
+        #print(final_player_score) debug
         player1.update_movement(None, None, None, None, effect_manager, dt, boss_enemy, boss_enemy.projectiles,
                                 throwable_objects_group)
         player2.update_movement(None, None, None, None, effect_manager, dt, boss_enemy, boss_enemy.projectiles,
@@ -1870,7 +1840,7 @@ while running: #
                         break
             if boss_enemy.current_health <= 0:
                 final_game_time = game_time_elapsed
-                final_player_score = current_score # Use current_score from regular levels as boss doesn't have separate scoring
+                 # Use current_score from regular levels as boss doesn't have separate scoring
 
                 boss_group.empty()
                 throwable_objects_group.empty()
