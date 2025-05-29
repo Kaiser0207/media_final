@@ -1,9 +1,23 @@
 [
     {
-        "name": "test",
-        "time": 192.02,
-        "score": 9,
+        "name": "WHY SO SERIOUS",
+        "time": 21.45,
+        "score": 0,
+        "face_image_path_p1": null,
+        "face_image_path_p2": "CatchFace\\WHY_SO_SERIOUS_p2_1.png"
+    },
+    {
+        "name": "Darth Vadar",
+        "time": 22.42,
+        "score": 0,
         "face_image_path_p1": null,
         "face_image_path_p2": null
+    },
+    {
+        "name": "fAKER",
+        "time": 33.54,
+        "score": 0,
+        "face_image_path_p1": "CatchFace\\fAKER_p1_1.png",
+        "face_image_path_p2": "CatchFace\\fAKER_p2_1.png"
     }
 ]

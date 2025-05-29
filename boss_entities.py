@@ -16,7 +16,7 @@ class Boss(pygame.sprite.Sprite):
         self.phase2_animation_switched = False  # To ensure switch happens once
         self.current_frame_index = 0
         self.animation_timer = 0
-        self.animation_speed = 0.1  # 每帧持续时间（秒）
+        self.animation_speed = 0.129  # 每帧持续时间（秒）
 
         self.image = self.run_animation_frames[self.current_frame_index]  # 初始帧
         self.rect = self.image.get_rect(center=(x, y))
@@ -46,6 +46,7 @@ class Boss(pygame.sprite.Sprite):
             if self.run2_animation_frames is None:
                 self.run2_animation_frames = boss_animation.load_boos_run2_animation(200, 200)
             self.run_animation_frames = self.run2_animation_frames
+            self.animation_speed = 0.08
             self.phase2_animation_switched = True
 
         if self.current_health <= self.max_health / 2 and self.movement_mode == "simple_four_way":
@@ -139,10 +140,7 @@ class Boss(pygame.sprite.Sprite):
     def take_damage(self, amount):
         self.current_health -= amount
         self.current_health = max(0, self.current_health)
-        # Simple visual feedback for damage
-        self.image.fill((255, 100, 100)) # Flash different red
-        pygame.time.set_timer(pygame.USEREVENT + 1, 100, True) # Timer to revert color
-
+        # Removed visual feedback for damage
 
     def revert_color(self):
         self.image.fill((200, 0, 0))
@@ -252,3 +250,4 @@ class ThrowableObject(pygame.sprite.Sprite):
 
     def draw(self, surface):
         surface.blit(self.image, self.rect)
+
