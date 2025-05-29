@@ -1,23 +1,23 @@
 {
-    "current_level_index": 2,
-    "game_state_on_save": 5,
+    "current_level_index": 0,
+    "game_state_on_save": 0,
     "player1": {
-        "pos_x": 421.24462037457283,
-        "pos_y": 470.96170990907177,
+        "pos_x": 100.0,
+        "pos_y": 360.0,
         "is_alive": true,
-        "facing_left": true,
+        "facing_left": false,
         "death_pos_x": null,
         "death_pos_y": null,
         "held_object_info": null
     },
     "player2": {
         "pos_x": 150.0,
-        "pos_y": 620.0,
-        "is_alive": false,
+        "pos_y": 360.0,
+        "is_alive": true,
         "facing_left": false,
-        "death_pos_x": 150.0,
-        "death_pos_y": 620.0,
-        "can_spawn_item_timer": -0.010999999999994334
+        "death_pos_x": null,
+        "death_pos_y": null,
+        "can_spawn_item_timer": 0
     },
     "effect_manager": {
         "effects": {
@@ -42,22 +42,36 @@
             }
         }
     },
-    "boss_level_data": {
-        "boss_current_health": 50,
-        "boss_pos_x": 148.0,
-        "boss_pos_y": 187.0,
-        "boss_movement_mode": "teleport",
-        "boss_move_timer": 1.2950000000000002,
-        "boss_current_direction_x": 1.0,
-        "boss_current_direction_y": 0.0,
-        "boss_teleport_timer": 2.7929999999999953,
-        "boss_is_teleporting_warning": false,
-        "boss_teleport_target_pos_x": 148.0,
-        "boss_teleport_target_pos_y": 187.0,
-        "boss_attack_timer": 1.0310000000000006
-    },
+    "boss_level_data": null,
     "throwable_objects": [],
-    "coop_boxes": [],
-    "game_time_elapsed": 16.25599999999988,
-    "current_score": 0
+    "coop_boxes": [
+        {
+            "pos_x": 270.0,
+            "pos_y": 180.0
+        },
+        {
+            "pos_x": 320.0,
+            "pos_y": 230.0
+        }
+    ],
+    "fruits": [
+        {
+            "pos_x": 860,
+            "pos_y": 520,
+            "fruit_type": "mirror"
+        },
+        {
+            "pos_x": 820,
+            "pos_y": 520,
+            "fruit_type": "invisible_wall"
+        },
+        {
+            "pos_x": 780,
+            "pos_y": 520,
+            "fruit_type": "volcano"
+        }
+    ],
+    "game_time_elapsed": 1.7589999999999988,
+    "current_score": 0,
+    "final_player_score": 0
 }

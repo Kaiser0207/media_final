@@ -93,6 +93,10 @@ ITEM_SPAWN_POS_DEFAULT = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 50) #
 
 # --- 檔案相關 ---
 SAVE_FILE = "savegame.json"
+SAVE_MESSAGE_COLOR = (255, 0, 0)
+show_save_feedback = False
+save_feedback_timer = 0.0
+SAVE_FEEDBACK_DURATION = 2.0
 
 # --- Pygame 初始化 ---
 pygame.init()
@@ -493,8 +497,8 @@ levels_data = [ #
         "player1_start": (100, SCREEN_HEIGHT // 2), "player2_start": (150, SCREEN_HEIGHT // 2),
         "goal1_pos": (SCREEN_WIDTH - 50, 150), "goal2_pos": (SCREEN_WIDTH - 50, SCREEN_HEIGHT - 150),
         "laser_walls": [(SCREEN_WIDTH // 2 - 10, 150, 20, SCREEN_HEIGHT - 300),
-                        (200, SCREEN_HEIGHT // 2 - 10, SCREEN_WIDTH // 2 - 200 - 10, 10),
-                        (SCREEN_WIDTH // 2 + 10, SCREEN_HEIGHT // 2 - 10, SCREEN_WIDTH // 2 - 20 - 10, 10)],
+                        (200, SCREEN_HEIGHT // 2 - 10, SCREEN_WIDTH // 2 - 200 - 10, 20),
+                        (SCREEN_WIDTH // 2 + 10, SCREEN_HEIGHT // 2 - 10, SCREEN_WIDTH // 2 - 20 - 10, 20)],
         "coop_box_start": [(SCREEN_WIDTH // 4, SCREEN_HEIGHT // 4), (SCREEN_WIDTH // 4 + 50, SCREEN_HEIGHT // 4 + 50)],
         "spike_traps": [(100, 540, 40, 40, 1.0, 2.0, 0.0), (160, 540, 40, 40, 0.7, 1.5, 0.5),
                         (220, 540, 40, 40, 1.2, 1.0, 1.0)],
@@ -629,7 +633,7 @@ def initialize_camera_for_capture():
         return
 
     try:
-        pictPath = "C:\opencv_test\haarcascade_frontalface_alt2.xml"
+        pictPath = cv2.data.haarcascades + 'haarcascade_frontalface_alt2.xml'
         if not os.path.exists(pictPath):
             print(f"錯誤：找不到 Haar cascade 檔案於 {pictPath}")
             game_state = STATE_SHOW_LEADERBOARD # Fallback
@@ -1469,6 +1473,11 @@ while running: #
     dt = clock.tick(FPS) / 1000.0 #
     keys = pygame.key.get_pressed() #
 
+    if show_save_feedback:
+        save_feedback_timer -= dt
+        if save_feedback_timer <= 0:
+            show_save_feedback = False
+
     for event in pygame.event.get(): #
         if event.type == pygame.QUIT:
             running = False #
@@ -1578,6 +1587,8 @@ while running: #
                             setup_boss_level() #
                     elif "儲存遊戲" in selected_action: # Save Game #
                         save_game_state() #
+                        show_save_feedback = True
+                        save_feedback_timer = SAVE_FEEDBACK_DURATION
                     elif "載入遊戲" in selected_action: # Load Game #
                         pygame.mixer.music.stop()
                         load_game_state_from_file() #
@@ -2144,9 +2155,14 @@ while running: #
                 pygame.draw.circle(screen, (80, 80, 80, 150) if pygame.SRCALPHA else (80, 80, 80), arc_rect.center,
                                    radius, 2) # #
                 start_angle_rad = -math.pi / 2; #
-                end_angle_rad = start_angle_rad + (percentage * 2 * math.pi) # #
+                end_angle_rad = start_angle_rad + (percentage * 2 * math.pi) #
                 if percentage > 0.01: pygame.draw.arc(screen, REVIVE_PROMPT_COLOR, arc_rect, start_angle_rad,
-                                                      end_angle_rad, 4) # #
+                                                      end_angle_rad, 4) #
+
+    if show_save_feedback:
+        feedback_surface = font_tiny.render("遊戲已存檔", True, SAVE_MESSAGE_COLOR)
+        feedback_rect = feedback_surface.get_rect(topright=(SCREEN_WIDTH - 10, 10))
+        screen.blit(feedback_surface, feedback_rect)
 
     show_opencv_paint_window() #
     pygame.display.flip() #
