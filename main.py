@@ -629,7 +629,7 @@ def initialize_camera_for_capture():
         return
 
     try:
-        pictPath = cv2.data.haarcascades + 'haarcascade_frontalface_alt2.xml'
+        pictPath = "C:\opencv_test\haarcascade_frontalface_alt2.xml"
         if not os.path.exists(pictPath):
             print(f"錯誤：找不到 Haar cascade 檔案於 {pictPath}")
             game_state = STATE_SHOW_LEADERBOARD # Fallback
@@ -794,7 +794,9 @@ def setup_boss_level():
     game_state = STATE_BOSS_LEVEL
 
 def load_level(level_idx): #
-    global game_state, current_level_index, game_time_elapsed, current_score # Added game_time_elapsed, current_score reset
+    global game_state, current_level_index, game_time_elapsed, current_score,final_player_score# Added game_time_elapsed, current_score reset
+    if level_idx == 0 and game_state ==STATE_PLAYING:
+        final_player_score = 0
     if level_idx >= len(levels_data):
         setup_boss_level() # Directly set up the boss level if all regular levels are done
         return
@@ -901,7 +903,8 @@ def save_game_state(): # MODIFIED to handle saving from pause
         "coop_boxes": [],
         "fruits": [],
         "game_time_elapsed": game_time_elapsed, # Save game time
-        "current_score": current_score # Save current score
+        "current_score": current_score,# Save current score
+        "final_player_score": final_player_score,
     }
 
     for key, effect_data_val in effect_manager.effects.items():
@@ -945,7 +948,7 @@ def save_game_state(): # MODIFIED to handle saving from pause
                 "is_thrown": obj.is_thrown,
                 "throw_velocity_x": obj.throw_velocity.x,
                 "throw_velocity_y": obj.throw_velocity.y,
-                "spawned_by_player_id": obj.spawned_by_player_id,
+                "spawned_by_player_id": getattr(obj, "held_by_player_id", None),
                 "is_held_by_p1": (id(obj) == player1_held_object_temp_id)
             }
             save_data["throwable_objects"].append(obj_data)
@@ -980,7 +983,7 @@ def load_game_state_from_file():
     global current_level_index, game_state, player1, player2, boss_enemy, effect_manager
     global laser_wall_sprites, goal_sprites, coop_box_group, spike_trap_group, fruit_sprites
     global meteor_sprites, warning_sprites, boss_group, throwable_objects_group, player_sprites
-    global game_time_elapsed, current_score # Add game_time_elapsed, current_score
+    global game_time_elapsed, current_score, final_player_score# Add game_time_elapsed, current_score
 
     try:
         with open(SAVE_FILE, 'r') as f:
@@ -1057,6 +1060,7 @@ def load_game_state_from_file():
         # After load_level, game_time_elapsed and current_score are reset, so restore them from save.
         game_time_elapsed = load_data.get("game_time_elapsed", 0.0)
         current_score = load_data.get("current_score", 0)
+        final_player_score = load_data.get("final_player_score", 0)  # 沒有就預設0
 
         coop_box_group.empty() # load_level populates this, so clear before loading saved positions
         loaded_coop_boxes = load_data.get("coop_boxes", [])
@@ -1521,7 +1525,7 @@ while running: #
                     level_select_selected_index = (level_select_selected_index + 1) % len(level_select_options) #
                 elif event.key == pygame.K_RETURN: #
                     selected_option_text = level_select_options[level_select_selected_index] #
-                    if selected_option_text == "返回主選單": #
+                    if selected_option_text == "返回主選單":
                         game_state = STATE_START_SCREEN #
                     elif selected_option_text == "魔王關卡": #
                         game_time_elapsed = 0.0 # Reset timer for boss if selected directly #
@@ -1579,6 +1583,8 @@ while running: #
                         pygame.mixer.music.stop()
                         load_game_state_from_file() #
                     elif "回到主選單" in selected_action: # Back to Main Menu #
+
+                        final_player_score = 0
                         pygame.mixer.music.unpause()
                         game_state = STATE_START_SCREEN #
                     elif "離開遊戲" in selected_action: # Quit #
@@ -1823,7 +1829,7 @@ while running: #
                     player2.pos.y = max(player2.rect.height // 2,
                                         min(p2_new_pos.y, SCREEN_HEIGHT - player2.rect.height // 2));
                     player2.rect.center = player2.pos
-
+        #print(final_player_score)debug用
         goal1.update_status(player1)
         goal2.update_status(player2) #
         if goal1.is_active and goal2.is_active and player1.is_alive and player2.is_alive: #
@@ -1835,7 +1841,7 @@ while running: #
 
     elif game_state == STATE_BOSS_LEVEL:
         game_time_elapsed += dt
-
+        #print(final_player_score)debug用
         player1.update_movement(None, None, None, None, effect_manager, dt, boss_enemy, boss_enemy.projectiles,
                                 throwable_objects_group)
         player2.update_movement(None, None, None, None, effect_manager, dt, boss_enemy, boss_enemy.projectiles,
