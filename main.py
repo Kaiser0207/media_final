@@ -2216,6 +2216,10 @@ while running: #
         feedback_rect = feedback_surface.get_rect(topright=(SCREEN_WIDTH - 10, 10))
         screen.blit(feedback_surface, feedback_rect)
 
+    # Draw a white line between player1 and player2 only during gameplay
+    if game_state in [STATE_PLAYING, STATE_BOSS_LEVEL, STATE_BOSS_DEFEATED]:
+        pygame.draw.line(screen, (255, 255, 255), (player1.pos.x, player1.pos.y), (player2.pos.x, player2.pos.y), 2)
+
     show_opencv_paint_window() #
     pygame.display.flip() #
 
