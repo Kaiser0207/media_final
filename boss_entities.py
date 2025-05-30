@@ -23,7 +23,7 @@ class Boss(pygame.sprite.Sprite):
         self.image = self.run_animation_frames[self.current_frame_index]  # 初始帧
         self.rect = self.image.get_rect(center=(x, y))
         self.pos = pygame.math.Vector2(x, y)
-        self.max_health = 100
+        self.max_health = 10
         self.current_health = self.max_health
         self.speed = 2
         self.movement_mode = "simple_four_way" # "simple_four_way", "teleport"

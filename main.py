@@ -440,7 +440,7 @@ class CoopBox(pygame.sprite.Sprite): #
         if img:
             self.image = pygame.transform.scale(img, (self.display_size, self.display_size))
         else:
-            self.image = pygame.Surface([self.display_size, self.display_size]);
+            self.image = pygame.Surface([self.display_size, self.displaySize]);
             self.image.fill(COOP_BOX_COLOR)
 
     def move(self, direction, obstacles):
@@ -591,6 +591,8 @@ goal2 = Goal(0, 0, GOAL_P2_COLOR, 1) #
 effect_manager = EffectManager() #
 boss_enemy = None # Will be initialized for boss level
 
+# 新增 Boss 被擊敗後的區域
+boss_defeated_area_rect = None
 
 def load_leaderboard():
     global leaderboard_data, loaded_face_images_cache
@@ -1353,7 +1355,7 @@ def draw_pause_menu():
     for i, option_text in enumerate(pause_menu_options):
         color = MENU_SELECTED_OPTION_COLOR if i == pause_menu_selected_index else MENU_OPTION_COLOR
         text_surf = font_menu.render(option_text, True, color)
-        text_rect = text_surf.get_rect(center=(SCREEN_WIDTH // 2, 250 + i * 70))
+        text_rect = text_surf.getRect(center=(SCREEN_WIDTH // 2, 250 + i * 70))
         screen.blit(text_surf, text_rect)
 
 game_state = STATE_START_SCREEN
@@ -1400,8 +1402,11 @@ def draw_game_state_messages():
         screen.blit(restart_text, (SCREEN_WIDTH // 2 - restart_text.get_width() // 2, SCREEN_HEIGHT // 2 + 30))
     elif game_state == STATE_BOSS_DEFEATED:
         victory_text = font_large.render("Boss 已擊敗！恭喜！", True, (0, 255, 0))
-        screen.blit(victory_text, (SCREEN_WIDTH // 2 - victory_text.get_width() // 2, SCREEN_HEIGHT // 2 - 50))
-        # No automatic restart text here, will go to ASK_CAMERA
+        screen.blit(victory_text, (SCREEN_WIDTH // 2 - victory_text.get_width() // 2, 10))
+        # 顯示提示
+        if boss_defeated_area_rect:
+            prompt_text = font_small.render("兩位玩家請一起走到綠色區域", True, (0, 255, 0))
+            screen.blit(prompt_text, (SCREEN_WIDTH // 2 - prompt_text.get_width() // 2, 100))
 
     if game_state == STATE_PLAYING:
         level_text = font_small.render(f"關卡 {current_level_index + 1}", True, TEXT_COLOR) #
@@ -1892,7 +1897,11 @@ while running: #
 
                 pygame.mixer.music.stop()
                 leaderboard_menu_selected_index = 0
-                game_state = STATE_ASK_CAMERA
+                # 產生 Boss 被擊敗後的正方形區域
+                boss_defeated_area_size = 120
+                boss_defeated_area_rect = pygame.Rect(0, 0, boss_defeated_area_size, boss_defeated_area_size)
+                boss_defeated_area_rect.center = boss_enemy.rect.center
+                game_state = STATE_BOSS_DEFEATED
             elif not player1.is_alive and not player2.is_alive:
                 game_state = STATE_GAME_OVER
 
@@ -1942,6 +1951,58 @@ while running: #
                                         min(p2_new_pos.y, SCREEN_HEIGHT - player2.rect.height // 2));
                     player2.rect.center = player2.pos
 
+    elif game_state == STATE_BOSS_DEFEATED:
+        # 玩家可自由移動，並檢查兩位玩家是否都在 boss_defeated_area_rect 上
+        player1.update_movement(None, None, None, None, effect_manager, dt)
+        player2.update_movement(None, None, None, None, effect_manager, dt)
+        for _ in range(CHAIN_ITERATIONS):
+            if player1.is_alive and player2.is_alive:
+                p1_pos_vec = player1.pos
+                p2_pos_vec = player2.pos
+                delta = p2_pos_vec - p1_pos_vec
+                distance = delta.length()
+                if distance > CHAIN_MAX_LENGTH and distance != 0:
+                    diff = (distance - CHAIN_MAX_LENGTH) / distance
+                    p1_new_pos = player1.pos + delta * 0.5 * diff
+                    p2_new_pos = player2.pos - delta * 0.5 * diff
+                    player1.pos.x = max(player1.rect.width // 2,
+                                        min(p1_new_pos.x, SCREEN_WIDTH - player1.rect.width // 2))
+                    player1.pos.y = max(player1.rect.height // 2,
+                                        min(p1_new_pos.y, SCREEN_HEIGHT - player1.rect.height // 2))
+                    player2.pos.x = max(player2.rect.width // 2,
+                                        min(p2_new_pos.x, SCREEN_WIDTH - player2.rect.width // 2))
+                    player2.pos.y = max(player2.rect.height // 2,
+                                        min(p2_new_pos.y, SCREEN_HEIGHT - player2.rect.height // 2))
+                    player1.rect.center = player1.pos
+                    player2.rect.center = player2.pos
+            elif player1.is_alive and not player2.is_alive and player2.death_pos:
+                delta = player2.death_pos - player1.pos
+                distance = delta.length()
+                if distance > CHAIN_MAX_LENGTH and distance != 0:
+                    diff_factor = (distance - CHAIN_MAX_LENGTH) / distance
+                    p1_new_pos = player1.pos + delta * diff_factor
+                    player1.pos.x = max(player1.rect.width // 2,
+                                        min(p1_new_pos.x, SCREEN_WIDTH - player1.rect.width // 2))
+                    player1.pos.y = max(player1.rect.height // 2,
+                                        min(p1_new_pos.y, SCREEN_HEIGHT - player1.rect.height // 2))
+                    player1.rect.center = player1.pos
+            elif player2.is_alive and not player1.is_alive and player1.death_pos:
+                delta = player1.death_pos - player2.pos
+                distance = delta.length()
+                if distance > CHAIN_MAX_LENGTH and distance != 0:
+                    diff_factor = (distance - CHAIN_MAX_LENGTH) / distance
+                    p2_new_pos = player2.pos + delta * diff_factor
+                    player2.pos.x = max(player2.rect.width // 2,
+                                        min(p2_new_pos.x, SCREEN_WIDTH - player2.rect.width // 2))
+                    player2.pos.y = max(player2.rect.height // 2,
+                                        min(p2_new_pos.y, SCREEN_HEIGHT - player2.rect.height // 2))
+                    player2.rect.center = player2.pos
+
+        if boss_defeated_area_rect:
+            p1_in = player1.rect.colliderect(boss_defeated_area_rect)
+            p2_in = player2.rect.colliderect(boss_defeated_area_rect)
+            if p1_in and p2_in:
+                game_state = STATE_ASK_CAMERA
 
     elif game_state == STATE_CAMERA_INPUT:
         if camera_capture_active and not player_name_input_active and not post_capture_prompt_active:
@@ -1986,24 +2047,12 @@ while running: #
         if boss_enemy and hasattr(boss_enemy, 'projectiles'): boss_enemy.projectiles.draw(screen) # Draw projectiles #
         player_sprites.draw(screen) #
 
-    if game_state in [STATE_PLAYING, STATE_BOSS_LEVEL] or \
-            (game_state == STATE_PAUSED and state_before_pause in [STATE_PLAYING, STATE_BOSS_LEVEL]): #
-        chain_start_pos = None; #
-        chain_end_pos = None; #
-        can_draw_chain = False #
-        if player1.is_alive and player2.is_alive: #
-            chain_start_pos = player1.rect.center; #
-            chain_end_pos = player2.rect.center; #
-            can_draw_chain = True #
-        elif player1.is_alive and not player2.is_alive and player2.death_pos: #
-            chain_start_pos = player1.rect.center; #
-            chain_end_pos = player2.death_pos; #
-            can_draw_chain = True #
-        elif player2.is_alive and not player1.is_alive and player1.death_pos: #
-            chain_start_pos = player2.rect.center; #
-            chain_end_pos = player1.death_pos; #
-            can_draw_chain = True #
-        if can_draw_chain: pygame.draw.line(screen, CHAIN_COLOR, chain_start_pos, chain_end_pos, 3) #
+    # 新增：在 BOSS_DEFEATED 狀態下繪製正方形區域
+    if game_state == STATE_BOSS_DEFEATED:
+        if boss_defeated_area_rect:
+            pygame.draw.rect(screen, (0, 255, 0), boss_defeated_area_rect, 0)
+            pygame.draw.rect(screen, (255, 255, 255), boss_defeated_area_rect, 4)
+        player_sprites.draw(screen)
 
     if game_state in [STATE_PLAYING, STATE_BOSS_LEVEL, STATE_GAME_OVER, STATE_BOSS_DEFEATED] or \
             (game_state == STATE_PAUSED and state_before_pause in [STATE_PLAYING, STATE_BOSS_LEVEL]):
@@ -2172,4 +2221,3 @@ while running: #
 
 release_camera_resources()
 pygame.quit()
-
