@@ -1912,7 +1912,14 @@ while running: #
                 # 產生 Boss 被擊敗後的正方形區域
                 boss_defeated_area_size = 120
                 boss_defeated_area_rect = pygame.Rect(0, 0, boss_defeated_area_size, boss_defeated_area_size)
-                boss_defeated_area_rect.center = boss_enemy.rect.center
+                boss_defeated_area_rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+                # 進入 boss_defeated_area_rect 狀態時所有死亡的 player 都會復活
+                if not player1.is_alive:
+                    player1.is_alive = True
+                    player1.revive() if hasattr(player1, 'revive') else None
+                if not player2.is_alive:
+                    player2.is_alive = True
+                    player2.revive() if hasattr(player2, 'revive') else None
                 game_state = STATE_BOSS_DEFEATED
             elif not player1.is_alive and not player2.is_alive:
                 game_state = STATE_GAME_OVER

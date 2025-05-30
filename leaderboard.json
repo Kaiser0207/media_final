@@ -1,6 +1,13 @@
 [
     {
         "name": "Anonymous",
+        "time": 7.39,
+        "score": 0,
+        "face_image_path_p1": null,
+        "face_image_path_p2": null
+    },
+    {
+        "name": "Anonymous",
         "time": 8.0,
         "score": 0,
         "face_image_path_p1": null,
@@ -9,6 +16,13 @@
     {
         "name": "Anonymous",
         "time": 9.78,
+        "score": 0,
+        "face_image_path_p1": null,
+        "face_image_path_p2": null
+    },
+    {
+        "name": "Anonymous",
+        "time": 12.76,
         "score": 0,
         "face_image_path_p1": null,
         "face_image_path_p2": null
