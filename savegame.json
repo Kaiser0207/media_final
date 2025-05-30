@@ -1,9 +1,9 @@
 {
-    "current_level_index": 0,
+    "current_level_index": 2,
     "game_state_on_save": 0,
     "player1": {
-        "pos_x": 100.0,
-        "pos_y": 360.0,
+        "pos_x": 40.0,
+        "pos_y": 430.0,
         "is_alive": true,
         "facing_left": false,
         "death_pos_x": null,
@@ -11,8 +11,8 @@
         "held_object_info": null
     },
     "player2": {
-        "pos_x": 150.0,
-        "pos_y": 360.0,
+        "pos_x": 40.0,
+        "pos_y": 310.0,
         "is_alive": true,
         "facing_left": false,
         "death_pos_x": null,
@@ -46,32 +46,40 @@
     "throwable_objects": [],
     "coop_boxes": [
         {
-            "pos_x": 270.0,
-            "pos_y": 180.0
+            "pos_x": 1010.0,
+            "pos_y": 120.0
         },
         {
-            "pos_x": 320.0,
-            "pos_y": 230.0
+            "pos_x": 1050.0,
+            "pos_y": 120.0
+        },
+        {
+            "pos_x": 1010.0,
+            "pos_y": 600.0
+        },
+        {
+            "pos_x": 1050.0,
+            "pos_y": 600.0
         }
     ],
     "fruits": [
         {
-            "pos_x": 860,
-            "pos_y": 520,
+            "pos_x": 820,
+            "pos_y": 540,
             "fruit_type": "mirror"
         },
         {
-            "pos_x": 820,
-            "pos_y": 520,
+            "pos_x": 40,
+            "pos_y": 200,
             "fruit_type": "invisible_wall"
         },
         {
-            "pos_x": 780,
-            "pos_y": 520,
+            "pos_x": 580,
+            "pos_y": 370,
             "fruit_type": "volcano"
         }
     ],
-    "game_time_elapsed": 1.7589999999999988,
+    "game_time_elapsed": 1.1720000000000006,
     "current_score": 0,
     "final_player_score": 0
 }

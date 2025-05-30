@@ -1355,7 +1355,7 @@ def draw_pause_menu():
     for i, option_text in enumerate(pause_menu_options):
         color = MENU_SELECTED_OPTION_COLOR if i == pause_menu_selected_index else MENU_OPTION_COLOR
         text_surf = font_menu.render(option_text, True, color)
-        text_rect = text_surf.getRect(center=(SCREEN_WIDTH // 2, 250 + i * 70))
+        text_rect = text_surf.get_rect(center=(SCREEN_WIDTH // 2, 250 + i * 70))
         screen.blit(text_surf, text_rect)
 
 game_state = STATE_START_SCREEN
