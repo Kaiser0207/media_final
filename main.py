@@ -234,23 +234,27 @@ def show_opencv_paint_window(): #
         key = cv2.waitKey(1) & 0xFF
 
 # --- 果實類別 --- (Copied from original)
-class Fruit(pygame.sprite.Sprite): #
+class Fruit(pygame.sprite.Sprite):
     def __init__(self, x, y, fruit_type):
         super().__init__()
         self.fruit_type = fruit_type
-        self.image = pygame.Surface([FRUIT_RADIUS * 2, FRUIT_RADIUS * 2], pygame.SRCALPHA)
-        if fruit_type == "mirror":
-            color = MIRROR_FRUIT_COLOR
+        if fruit_type == "volcano":
+            img = pygame.image.load('./plays_animation_art/book_1.png').convert_alpha()
+            img = pygame.transform.smoothscale(img, (FRUIT_RADIUS * 2, FRUIT_RADIUS * 2))
+            self.image = img
         elif fruit_type == "invisible_wall":
-            color = INVISIBLE_WALL_COLOR
-        elif fruit_type == "volcano":
-            color = VOLCANO_FRUIT_COLOR
-        #elif fruit_type == "score":
-        #    color = SCORE_FRUIT_COLOR 應該無使用
+            img = pygame.image.load('./plays_animation_art/book_2.png').convert_alpha()
+            img = pygame.transform.smoothscale(img, (FRUIT_RADIUS * 2, FRUIT_RADIUS * 2))
+            self.image = img
+        elif fruit_type == "mirror":
+            img = pygame.image.load('./plays_animation_art/book_3.png').convert_alpha()
+            img = pygame.transform.smoothscale(img, (FRUIT_RADIUS * 2, FRUIT_RADIUS * 2))
+            self.image = img
         else:
+            self.image = pygame.Surface([FRUIT_RADIUS * 2, FRUIT_RADIUS * 2], pygame.SRCALPHA)
             color = (255, 255, 255)
-        pygame.draw.circle(self.image, color, (FRUIT_RADIUS, FRUIT_RADIUS), FRUIT_RADIUS)
-        pygame.draw.circle(self.image, WHITE, (FRUIT_RADIUS, FRUIT_RADIUS), FRUIT_RADIUS, 2)
+            pygame.draw.circle(self.image, color, (FRUIT_RADIUS, FRUIT_RADIUS), FRUIT_RADIUS)
+            pygame.draw.circle(self.image, WHITE, (FRUIT_RADIUS, FRUIT_RADIUS), FRUIT_RADIUS, 2)
         self.rect = self.image.get_rect(center=(x, y))
 
 # --- 流星類別 (火山爆發效果) --- (Copied from original)
@@ -1332,8 +1336,12 @@ def populate_level_select_options():
     level_select_options.append("魔王關卡")
     level_select_options.append("返回主選單")
 
+# Load the background image for the level select menu
+level_select_background = pygame.image.load(os.path.join('plays_animation_art', 'Background_menu.png')).convert()
+level_select_background = pygame.transform.scale(level_select_background, (SCREEN_WIDTH, SCREEN_HEIGHT))
+
 def draw_level_select_menu():
-    screen.fill(BLACK)
+    screen.blit(level_select_background, (0, 0))  # Draw the background image
     title_text = font_large.render("選擇關卡", True, TEXT_COLOR)
     screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 50))
 
@@ -1375,6 +1383,10 @@ revive_target = None #
 
 # Start the drawing window in a separate thread
 start_drawing_thread()
+
+# Load the background image for the main menu
+default_menu_background = pygame.image.load(os.path.join('plays_animation_art', 'Background_menu.png')).convert()
+default_menu_background = pygame.transform.scale(default_menu_background, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
 def draw_game_state_messages():
     global game_time_elapsed, current_score
@@ -2059,6 +2071,7 @@ while running: #
         draw_game_state_messages() #
 
     if game_state == STATE_START_SCREEN: #
+        screen.blit(default_menu_background, (0, 0))  # Draw the background image
         title_text = font_large.render("雙人合作遊戲 Demo", True, TEXT_COLOR); #
         screen.blit(title_text,
                     (SCREEN_WIDTH // 2 - title_text.get_width() // 2, SCREEN_HEIGHT // 4 - 30)) # Adjusted Y #

@@ -378,6 +378,35 @@ class boss_animation:
 
         return frames
 
+
+    def split_boss_image_vertically(image_path):
+        """
+        Split the boss.png image vertically into 7 equal parts without scaling.
+
+        Args:
+            image_path (str): Path to the boss.png image.
+
+        Returns:
+            list: A list of pygame.Surface objects representing the split images.
+        """
+        if not os.path.exists(image_path):
+            raise FileNotFoundError(f"Image not found: {image_path}")
+
+        # Load the image
+        boss_image = pygame.image.load(image_path).convert_alpha()
+        frame_width = boss_image.get_width()
+        frame_height = boss_image.get_height() // 7
+
+        frames = []
+        for i in range(7):
+            # Slice each vertical segment
+            frame = boss_image.subsurface((0, i * frame_height, frame_width, frame_height))
+            frames.append(frame)
+
+        return frames
+
+
+
 if __name__ == "__main__":
     pygame.init()
     screen = pygame.display.set_mode((800, 600))
