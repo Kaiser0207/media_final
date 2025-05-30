@@ -1400,7 +1400,7 @@ def draw_game_state_messages():
         screen.blit(tutorial_text3, (SCREEN_WIDTH // 2 - tutorial_text3.get_width() // 2 - 250, 130))
         tutorial_text4 = font_tiny.render("地刺:縮回時可通過，伸出時碰觸會死亡", True, (255, 255, 255))
         screen.blit(tutorial_text4, (SCREEN_WIDTH // 2 - tutorial_text4.get_width() // 2 - 250, SCREEN_HEIGHT - 250))
-        tutorial_text5 = font_tiny.render("紫色:牆壁隱形，黃色:操控方向相反", True, (255, 255, 255))
+        tutorial_text5 = font_tiny.render("藍色:牆壁隱形，灰色:操控方向相反", True, (255, 255, 255))
         screen.blit(tutorial_text5, (SCREEN_WIDTH // 2 - tutorial_text5.get_width() // 2 + 220, SCREEN_HEIGHT - 280))
         tutorial_text6 = font_tiny.render("紅色:會召喚隕石墜落", True, (255, 255, 255))
         screen.blit(tutorial_text6, (SCREEN_WIDTH // 2 - tutorial_text5.get_width() // 2 + 220, SCREEN_HEIGHT - 310))

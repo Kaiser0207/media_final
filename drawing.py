@@ -50,6 +50,7 @@ def drawing_window():
     while True:
         display_canvas = canvas.copy()
         cv2.putText(display_canvas, f"Shape: {shape_detected}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        cv2.putText(display_canvas, "Enter: clear screen", (10, 65), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
         cv2.imshow("Drawing Window", display_canvas)
         key = cv2.waitKey(1) & 0xFF
         if key == 27:  # Press 'Esc' to exit
