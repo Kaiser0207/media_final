@@ -2,13 +2,13 @@ import pygame
 import cv2
 import numpy as np
 import math
-from player import *
-from boss_entities import Boss #
 import random
 import json
 import os
+from player import *
+from boss_entities import *
 from music import *
-from drawing import start_drawing_thread, get_shape_from_queue
+from drawing import *
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -128,6 +128,10 @@ FINAL_BATTLE_MUSIC = os.path.join("game_music", "21 - Final Battle - For Love.mp
 box_img = pygame.image.load("box.png").convert_alpha() #
 spike_trap_img_out = pygame.image.load("spike_trap_out.png").convert_alpha() #
 spike_trap_img_in = pygame.image.load("spike_trap_in.png").convert_alpha() #
+
+# 載入 floor.png 作為平鋪背景
+floor_tile = pygame.image.load(os.path.join('plays_animation_art', 'floor.png')).convert_alpha()
+floor_tile_width, floor_tile_height = floor_tile.get_width(), floor_tile.get_height()
 
 # 加載支持中文的字體 (Copied from original)
 try:
@@ -2040,6 +2044,17 @@ while running: #
     last_game_state = game_state
 
     screen.fill(BLACK) #
+
+    # --- 平鋪 floor.png 作為背景 ---
+    if (
+        (game_state == STATE_PLAYING and current_level_index in [0, 1, 2]) or
+        game_state == STATE_BOSS_LEVEL or
+        game_state == STATE_BOSS_DEFEATED or
+        (game_state == STATE_PAUSED and state_before_pause in [STATE_PLAYING, STATE_BOSS_LEVEL, STATE_BOSS_DEFEATED])
+    ):
+        for y in range(0, SCREEN_HEIGHT, floor_tile_height):
+            for x in range(0, SCREEN_WIDTH, floor_tile_width):
+                screen.blit(floor_tile, (x, y))
 
     if game_state == STATE_PLAYING or (game_state == STATE_PAUSED and state_before_pause == STATE_PLAYING):
         current_lw_alpha = effect_manager.get_laser_wall_alpha() #
