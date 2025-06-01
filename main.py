@@ -137,6 +137,12 @@ floor_tile_width, floor_tile_height = floor_tile.get_width(), floor_tile.get_hei
 floor_ladder_img = pygame.image.load(os.path.join('plays_animation_art', 'floor_ladder.png')).convert_alpha()
 floor_ladder_width, floor_ladder_height = floor_ladder_img.get_width(), floor_ladder_img.get_height()
 
+# 載入按鈕圖像
+button_red_up_img = pygame.image.load(os.path.join('plays_animation_art', 'button_red_up.png')).convert_alpha()
+button_red_down_img = pygame.image.load(os.path.join('plays_animation_art', 'button_red_down.png')).convert_alpha()
+button_blue_up_img = pygame.image.load(os.path.join('plays_animation_art', 'button_blue_up.png')).convert_alpha()
+button_blue_down_img = pygame.image.load(os.path.join('plays_animation_art', 'button_blue_down.png')).convert_alpha()
+
 # 加載支持中文的字體 (Copied from original)
 try:
     system_fonts = pygame.font.get_fonts()
@@ -424,11 +430,23 @@ class LaserWall(pygame.sprite.Sprite): #
 class Goal(pygame.sprite.Sprite): #
     def __init__(self, x, y, color, player_id_target):
         super().__init__()
-        self.image = pygame.Surface([int(PLAYER_RADIUS * 2.5), int(PLAYER_RADIUS * 2.5)])
-        self.image.fill(color)
-        self.rect = self.image.get_rect(center=(x, y))
+        self.color = color
         self.player_id_target = player_id_target
         self.is_active = False
+        self.rect = pygame.Rect(0, 0, int(PLAYER_RADIUS * 2.5), int(PLAYER_RADIUS * 2.5))
+        self.rect.center = (x, y)
+        # For player1 (id=0), use button images
+        if player_id_target == 0:
+            self.img_up = pygame.transform.scale(button_red_up_img, (self.rect.width, self.rect.height))
+            self.img_down = pygame.transform.scale(button_red_down_img, (self.rect.width, self.rect.height))
+        elif player_id_target == 1:
+            self.img_up = pygame.transform.scale(button_blue_up_img, (self.rect.width, self.rect.height))
+            self.img_down = pygame.transform.scale(button_blue_down_img, (self.rect.width, self.rect.height))
+        else:
+            self.img_up = None
+            self.img_down = None
+        self.image = pygame.Surface([self.rect.width, self.rect.height], pygame.SRCALPHA)
+        self.image.fill(color)
 
     def update_status(self, player):
         if player.is_alive and self.rect.colliderect(player.rect) and player.player_id == self.player_id_target:
@@ -437,8 +455,17 @@ class Goal(pygame.sprite.Sprite): #
             self.is_active = False
 
     def draw(self, surface):
-        surface.blit(self.image, self.rect)
-        if self.is_active: pygame.draw.rect(surface, WHITE, self.rect, 3)
+        if self.player_id_target in [0, 1]:
+            # Player1/Player2's goal: use button images
+            if self.is_active:
+                surface.blit(self.img_down, self.rect)
+            else:
+                surface.blit(self.img_up, self.rect)
+        else:
+            # Other: keep original color
+            surface.blit(self.image, self.rect)
+        if self.is_active:
+            pygame.draw.rect(surface, WHITE, self.rect, 3)
 
 # --- 協力推箱子類別 --- (Copied from original)
 class CoopBox(pygame.sprite.Sprite): #
@@ -2028,6 +2055,17 @@ while running: #
         if boss_defeated_area_rect:
             p1_in = player1.rect.colliderect(boss_defeated_area_rect)
             p2_in = player2.rect.colliderect(boss_defeated_area_rect)
+            if p2_in:
+                img = pygame.transform.scale(button_blue_down_img, (boss_defeated_area_rect.width, boss_defeated_area_rect.height))
+            else:
+                img = pygame.transform.scale(button_blue_up_img, (boss_defeated_area_rect.width, boss_defeated_area_rect.height))
+            screen.blit(img, boss_defeated_area_rect.topleft)
+            pygame.draw.rect(screen, (255, 255, 255), boss_defeated_area_rect, 4)
+        player_sprites.draw(screen)
+
+        if boss_defeated_area_rect:
+            p1_in = player1.rect.colliderect(boss_defeated_area_rect)
+            p2_in = player2.rect.colliderect(boss_defeated_area_rect)
             if p1_in and p2_in:
                 game_state = STATE_ASK_CAMERA
 
@@ -2088,8 +2126,12 @@ while running: #
     # 新增：在 BOSS_DEFEATED 狀態下繪製正方形區域
     if game_state == STATE_BOSS_DEFEATED:
         if boss_defeated_area_rect:
-            # 使用 floor_ladder_img 填充 boss_defeated_area_rect 區域
-            img = pygame.transform.scale(floor_ladder_img, (boss_defeated_area_rect.width, boss_defeated_area_rect.height))
+            # 根據 player2 是否在終點區域決定顯示的圖像
+            p2_in = player2.rect.colliderect(boss_defeated_area_rect)
+            if p2_in:
+                img = pygame.transform.scale(button_blue_down_img, (boss_defeated_area_rect.width, boss_defeated_area_rect.height))
+            else:
+                img = pygame.transform.scale(button_blue_up_img, (boss_defeated_area_rect.width, boss_defeated_area_rect.height))
             screen.blit(img, boss_defeated_area_rect.topleft)
             pygame.draw.rect(screen, (255, 255, 255), boss_defeated_area_rect, 4)
         player_sprites.draw(screen)
