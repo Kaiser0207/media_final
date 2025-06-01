@@ -38,31 +38,32 @@ MENU_OPTION_COLOR = (220, 220, 220) # NEW
 MENU_SELECTED_OPTION_COLOR = (255, 255, 0) # NEW
 PAUSE_OVERLAY_COLOR = (0, 0, 0, 150) # NEW
 
+#---排行榜---
 LEADERBOARD_FILE = "leaderboard.json"
 MAX_LEADERBOARD_ENTRIES = 10 # Show top 10
 FACE_IMAGE_SAVE_DIR = "CatchFace"
 LEADERBOARD_FACE_SIZE = (60, 60) # Individual face size
 
 # 玩家參數
-CHAIN_MAX_LENGTH = 400 #
-CHAIN_ITERATIONS = 5 #
-REVIVAL_RADIUS = CHAIN_MAX_LENGTH #
-REVIVE_KEYP1 = pygame.K_f #
-REVIVE_KEYP2 = pygame.K_PERIOD #
+CHAIN_MAX_LENGTH = 400
+CHAIN_ITERATIONS = 5
+REVIVAL_RADIUS = CHAIN_MAX_LENGTH
+REVIVE_KEYP1 = pygame.K_f
+REVIVE_KEYP2 = pygame.K_PERIOD
 
 # 協力推箱子常數
-COOP_BOX_SIZE = 40 #
-COOP_BOX_SPEED = 2 #
-COOP_BOX_PUSH_RADIUS = 60 #
+COOP_BOX_SIZE = 40
+COOP_BOX_SPEED = 2
+COOP_BOX_PUSH_RADIUS = 60
 
 # 地刺參數
-SAFE_COLOR = (220, 220, 220) #
-DANGER_COLOR = (220, 40, 40) #
+SAFE_COLOR = (220, 220, 220)
+DANGER_COLOR = (220, 40, 40)
 
 # 遊戲狀態
-STATE_START_SCREEN = 4 #
-STATE_PLAYING = 0 #
-STATE_GAME_OVER = 1 #
+STATE_START_SCREEN = 4
+STATE_PLAYING = 0
+STATE_GAME_OVER = 1
 STATE_LEVEL_COMPLETE = 2 # No longer used directly for "all levels", see PRE_BOSS
 STATE_PRE_BOSS_COMPLETE = 3 # This state will no longer be actively used for a waiting screen
 STATE_BOSS_LEVEL = 5 # New state for Boss Level #
@@ -74,23 +75,21 @@ STATE_PAUSED = 10 # NEW: Pause Menu State
 STATE_LEVEL_SELECT = 11 # NEW: Level Selection State
 
 # --- 果實相關常數 ---
-FRUIT_RADIUS = 15 #
-FRUIT_EFFECT_DURATION = 30.0 #
-
-# 果實顏色
-MIRROR_FRUIT_COLOR = (255, 215, 0) #
-INVISIBLE_WALL_COLOR = (138, 43, 226) #
-VOLCANO_FRUIT_COLOR = (255, 69, 0) #
+FRUIT_RADIUS = 15
+FRUIT_EFFECT_DURATION = 30.0
+MIRROR_FRUIT_COLOR = (255, 215, 0)
+INVISIBLE_WALL_COLOR = (138, 43, 226)
+VOLCANO_FRUIT_COLOR = (255, 69, 0)
 
 # 火山效果相關常數
-METEOR_WARNING_TIME = 1.5 #
-METEOR_FALL_TIME = 0.5 #
-METEOR_SIZE = 75 #
-METEOR_COLOR = (139, 69, 19) #
-WARNING_COLOR = (255, 255, 0) #
+METEOR_WARNING_TIME = 1.5
+METEOR_FALL_TIME = 0.5
+METEOR_SIZE = 75
+METEOR_COLOR = (139, 69, 19)
+WARNING_COLOR = (255, 255, 0)
 
 # Boss Level Item Spawn Point (P2 "draws" here if P1 not available)
-ITEM_SPAWN_POS_DEFAULT = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 50) #
+ITEM_SPAWN_POS_DEFAULT = (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 50)
 
 # --- 檔案相關 ---
 SAVE_FILE = "savegame.json"
@@ -99,11 +98,71 @@ show_save_feedback = False
 save_feedback_timer = 0.0
 SAVE_FEEDBACK_DURATION = 2.0
 
+# --- 遊戲速度和分數與排行榜 ---
+game_time_elapsed = 0.0
+leaderboard_data = []
+final_game_time = 0.0
+current_score = 0
+final_player_score = 0
+
+# 相機
+camera_capture_active = False
+player_name_input_active = False # For single entry/team name
+current_player_name = "" # Single entry/team name
+captured_face_image_path_p1 = None
+captured_face_image_path_p2 = None
+current_capture_player_index = 0 # 0 for P1, 1 for P2
+photo_taken_for_current_player_flag = False # Flag if photo was taken/skipped for current player_capture_index
+post_capture_prompt_active = False # If true, shows options after a capture/skip attempt
+
+# OpenCV 相機
+cap = None
+face_cascade = None
+camera_frame_surface = None # Pygame surface for camera feed
+loaded_face_images_cache = {} # Cache for loaded face images for leaderboard
+
+boss_music_playing = False # 追蹤BOSS_MUSIC是否正在播放
+
+#暫停遊戲菜單
+state_before_pause = None
+pause_menu_options = [
+    "繼續遊戲",
+    "重新開始關卡",
+    "儲存遊戲",
+    "載入遊戲",
+    "回到主選單",
+    "離開遊戲"
+]
+pause_menu_selected_index = 0
+
+level_select_options = [] # Will be populated
+level_select_selected_index = 0
+
+#起始菜單
+start_menu_options = [
+    "開始新遊戲",
+    "選擇關卡",
+    "載入遊戲",
+    "查看排行榜",
+    "離開遊戲"
+]
+start_menu_selected_index = 0
+
+#排行榜菜單
+leaderboard_menu_options = [
+    ("重新開始", "RESTART"),
+    ("返回主選單", "MAIN_MENU"),
+    ("離開遊戲", "QUIT")
+]
+leaderboard_menu_selected_index = 0
+
 # --- Pygame 初始化 ---
 pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("雙人合作遊戲 Demo - 果實能力 & Boss") # Updated Caption
 clock = pygame.time.Clock()
+
+#排行榜頭貼路徑
 if not os.path.exists(FACE_IMAGE_SAVE_DIR):
     os.makedirs(FACE_IMAGE_SAVE_DIR)
 
@@ -120,14 +179,14 @@ except pygame.error as e:
     default_face_image_surface = None
 
 # --- 音樂檔案路徑 ---
-LEVEL_1_MUSIC = os.path.join("game_music", "04 - Silent Forest.mp3") #
-BOSS_MUSIC = os.path.join("game_music", "10 - Lost Shrine.mp3") #
-FINAL_BATTLE_MUSIC = os.path.join("game_music", "21 - Final Battle - For Love.mp3") #
+LEVEL_1_MUSIC = os.path.join("game_music", "04 - Silent Forest.mp3")
+BOSS_MUSIC = os.path.join("game_music", "10 - Lost Shrine.mp3")
+FINAL_BATTLE_MUSIC = os.path.join("game_music", "21 - Final Battle - For Love.mp3")
 
 # 圖片載入
-box_img = pygame.image.load("box.png").convert_alpha() #
-spike_trap_img_out = pygame.image.load("spike_trap_out.png").convert_alpha() #
-spike_trap_img_in = pygame.image.load("spike_trap_in.png").convert_alpha() #
+box_img = pygame.image.load("box.png").convert_alpha()
+spike_trap_img_out = pygame.image.load("spike_trap_out.png").convert_alpha()
+spike_trap_img_in = pygame.image.load("spike_trap_in.png").convert_alpha()
 
 # 載入 floor.png 作為平鋪背景
 floor_tile = pygame.image.load(os.path.join('plays_animation_art', 'floor.png')).convert_alpha()
@@ -143,7 +202,7 @@ button_red_down_img = pygame.image.load(os.path.join('plays_animation_art', 'but
 button_blue_up_img = pygame.image.load(os.path.join('plays_animation_art', 'button_blue_up.png')).convert_alpha()
 button_blue_down_img = pygame.image.load(os.path.join('plays_animation_art', 'button_blue_down.png')).convert_alpha()
 
-# 加載支持中文的字體 (Copied from original)
+# 加載支持中文的字體
 try:
     system_fonts = pygame.font.get_fonts()
     chinese_font_name = None
@@ -178,76 +237,7 @@ except Exception as e:
     font_effect = pygame.font.Font(None, 18)
     font_menu = pygame.font.Font(None, 48) # NEW: For menus
 
-# --- OpenCV 視窗準備 (Not used by fruits) ---
-use_opencv = False #
-opencv_window_name = "P2 Paint Area (OpenCV)" #
-paint_surface_width = 400 #
-paint_surface_height = 300 #
-paint_surface = np.zeros((paint_surface_height, paint_surface_width, 3), dtype=np.uint8) + 200 #
-
-# --- Global game variables ---
-game_time_elapsed = 0.0
-current_score = 0
-leaderboard_data = []
-final_game_time = 0.0
-final_player_score = 0
-
-# Variables for camera input state
-camera_capture_active = False
-player_name_input_active = False # For single entry/team name
-current_player_name = "" # Single entry/team name
-captured_face_image_path_p1 = None
-captured_face_image_path_p2 = None
-current_capture_player_index = 0 # 0 for P1, 1 for P2
-photo_taken_for_current_player_flag = False # Flag if photo was taken/skipped for current player_capture_index
-post_capture_prompt_active = False # If true, shows options after a capture/skip attempt
-
-
-# OpenCV related
-cap = None
-face_cascade = None
-camera_frame_surface = None # Pygame surface for camera feed
-loaded_face_images_cache = {} # Cache for loaded face images for leaderboard
-
-boss_music_playing = False # 追蹤BOSS_MUSIC是否正在播放
-
-state_before_pause = None
-pause_menu_options = [
-    "繼續遊戲",
-    "重新開始關卡",
-    "儲存遊戲",
-    "載入遊戲",
-    "回到主選單",
-    "離開遊戲"
-]
-pause_menu_selected_index = 0
-
-
-level_select_options = [] # Will be populated
-level_select_selected_index = 0
-
-start_menu_options = [
-    "開始新遊戲",
-    "選擇關卡",
-    "載入遊戲",
-    "查看排行榜",
-    "離開遊戲"
-]
-start_menu_selected_index = 0
-
-leaderboard_menu_options = [
-    ("重新開始", "RESTART"),
-    ("返回主選單", "MAIN_MENU"),
-    ("離開遊戲", "QUIT")
-]
-leaderboard_menu_selected_index = 0
-
-def show_opencv_paint_window(): #
-    if use_opencv:
-        cv2.imshow(opencv_window_name, paint_surface)
-        key = cv2.waitKey(1) & 0xFF
-
-# --- 果實類別 --- (Copied from original)
+# --- 果實類別 ---
 class Fruit(pygame.sprite.Sprite):
     def __init__(self, x, y, fruit_type):
         super().__init__()
@@ -271,7 +261,7 @@ class Fruit(pygame.sprite.Sprite):
             pygame.draw.circle(self.image, WHITE, (FRUIT_RADIUS, FRUIT_RADIUS), FRUIT_RADIUS, 2)
         self.rect = self.image.get_rect(center=(x, y))
 
-# --- 流星類別 (火山爆發效果) --- (Copied from original)
+# --- 流星類別 (火山爆發效果) ---
 class Meteor(pygame.sprite.Sprite): #
     def __init__(self, x, y, lifetime=METEOR_FALL_TIME):
         super().__init__()
@@ -287,7 +277,7 @@ class Meteor(pygame.sprite.Sprite): #
         self.timer += dt
         if self.timer >= self.lifetime: self.kill()
 
-# --- 警告標記類別 --- (Copied from original)
+# --- 警告標記類別 ---
 class Warning(pygame.sprite.Sprite): #
     def __init__(self, x, y, duration):
         super().__init__()
@@ -309,7 +299,7 @@ class Warning(pygame.sprite.Sprite): #
             return True # Indicate meteor should spawn
         return False
 
-# --- 效果管理器 --- (Copied from original)
+# --- 效果管理器 ---
 class EffectManager: #
     def __init__(self):
         self.default_laser_wall_alpha = 255
@@ -324,18 +314,18 @@ class EffectManager: #
     def apply_effect(self, effect_type, player_id=None):
         if effect_type == "mirror":
             if player_id == 0:
-                self.effects["mirror_p1"]["active"] = True;
+                self.effects["mirror_p1"]["active"] = True
                 self.effects["mirror_p1"]["timer"] = FRUIT_EFFECT_DURATION
             elif player_id == 1:
-                self.effects["mirror_p2"]["active"] = True;
+                self.effects["mirror_p2"]["active"] = True
                 self.effects["mirror_p2"]["timer"] = FRUIT_EFFECT_DURATION
         elif effect_type == "invisible_wall":
-            self.effects["invisible_wall"]["active"] = True;
+            self.effects["invisible_wall"]["active"] = True
             self.effects["invisible_wall"]["timer"] = FRUIT_EFFECT_DURATION
-            self.effects["invisible_wall"]["flash_timer"] = 0;
+            self.effects["invisible_wall"]["flash_timer"] = 0
             self.effects["invisible_wall"]["current_alpha"] = 0
         elif effect_type == "volcano":
-            self.effects["volcano"]["active"] = True;
+            self.effects["volcano"]["active"] = True
             self.effects["volcano"]["timer"] = FRUIT_EFFECT_DURATION
             self.effects["volcano"]["meteor_timer"] = 0
 
@@ -344,16 +334,16 @@ class EffectManager: #
             if self.effects[key]["active"]: self.effects[key]["timer"] -= dt
             if self.effects[key]["timer"] <= 0: self.effects[key]["active"] = False
         if self.effects["invisible_wall"]["active"]:
-            self.effects["invisible_wall"]["timer"] -= dt;
+            self.effects["invisible_wall"]["timer"] -= dt
             self.effects["invisible_wall"]["flash_timer"] += dt
             target_alpha = 0
             if self.effects["invisible_wall"]["timer"] <= 0:
-                self.effects["invisible_wall"]["active"] = False;
+                self.effects["invisible_wall"]["active"] = False
                 self.effects["invisible_wall"]["current_alpha"] = self.default_laser_wall_alpha
             else:
-                cycle_duration = 5.0;
-                hidden_duration = 4.0;
-                visible_duration = 1.0;
+                cycle_duration = 5.0
+                hidden_duration = 4.0
+                visible_duration = 1.0
                 fade_time = visible_duration / 2
                 current_cycle_time = self.effects["invisible_wall"]["flash_timer"] % cycle_duration
                 if current_cycle_time < hidden_duration:
@@ -363,7 +353,7 @@ class EffectManager: #
                     if time_in_visible_phase < fade_time:
                         target_alpha = int((time_in_visible_phase / fade_time) * 255)
                     else:
-                        time_in_fade_out = time_in_visible_phase - fade_time;
+                        time_in_fade_out = time_in_visible_phase - fade_time
                         target_alpha = int(
                             (1.0 - (time_in_fade_out / fade_time)) * 255)
                 self.effects["invisible_wall"]["current_alpha"] = max(0, min(255, target_alpha))
@@ -372,7 +362,7 @@ class EffectManager: #
                 self.effects["invisible_wall"]["current_alpha"] = self.default_laser_wall_alpha
 
         if self.effects["volcano"]["active"]:
-            self.effects["volcano"]["timer"] -= dt;
+            self.effects["volcano"]["timer"] -= dt
             self.effects["volcano"]["meteor_timer"] += dt
             if self.effects["volcano"]["timer"] <= 0: self.effects["volcano"]["active"] = False
 
@@ -396,7 +386,7 @@ class EffectManager: #
 
     def reset_all_effects(self):
         for effect_key in self.effects:
-            self.effects[effect_key]["active"] = False;
+            self.effects[effect_key]["active"] = False
             self.effects[effect_key]["timer"] = 0
             if "flash_timer" in self.effects[effect_key]: self.effects[effect_key]["flash_timer"] = 0
             if "showing" in self.effects[effect_key]: self.effects[effect_key]["showing"] = True
@@ -409,7 +399,7 @@ class EffectManager: #
             if data["active"]: info.append(f"{data['name']}: {data['timer']:.1f}s")
         return info
 
-# --- 牆壁類別 (雷射牆壁) --- (Copied from original)
+# --- 牆壁類別 (雷射牆壁) ---
 class LaserWall(pygame.sprite.Sprite): #
     def __init__(self, x, y, width, height):
         super().__init__()
@@ -426,7 +416,7 @@ class LaserWall(pygame.sprite.Sprite): #
             self.image.fill(
                 (self.original_color[0], self.original_color[1], self.original_color[2], self._current_alpha))
 
-# --- 目標類別 (顏色地板) --- (Copied from original)
+# --- 目標類別 (顏色地板) ---
 class Goal(pygame.sprite.Sprite): #
     def __init__(self, x, y, color, player_id_target):
         super().__init__()
@@ -467,7 +457,7 @@ class Goal(pygame.sprite.Sprite): #
         if self.is_active:
             pygame.draw.rect(surface, WHITE, self.rect, 3)
 
-# --- 協力推箱子類別 --- (Copied from original)
+# --- 協力推箱子類別 ---
 class CoopBox(pygame.sprite.Sprite): #
     def __init__(self, x, y, img=None):
         super().__init__()
@@ -484,36 +474,36 @@ class CoopBox(pygame.sprite.Sprite): #
 
     def move(self, direction, obstacles):
         tentative_pos = self.pos + direction * COOP_BOX_SPEED;
-        test_rect = self.rect.copy();
+        test_rect = self.rect.copy()
         test_rect.center = tentative_pos
         for obs in obstacles:
             if test_rect.colliderect(obs.rect) and isinstance(obs, LaserWall): return
-        if not (self.collision_size // 2 <= tentative_pos.x <= SCREEN_WIDTH - self.collision_size // 2 and \
+        if not (self.collision_size // 2 <= tentative_pos.x <= SCREEN_WIDTH - self.collision_size // 2 and
                 self.collision_size // 2 <= tentative_pos.y <= SCREEN_HEIGHT - self.collision_size // 2): return
-        self.pos = tentative_pos;
+        self.pos = tentative_pos
         self.rect.center = self.pos
 
     def draw(self, surface):
         img_rect = self.image.get_rect(center=self.rect.center);
         surface.blit(self.image, img_rect)
 
-# ---地刺類別--- (Copied from original)
+# ---地刺類別---
 class SpikeTrap(pygame.sprite.Sprite): #
     def __init__(self, x, y, width=40, height=40, out_time=1.0, in_time=1.5, phase_offset=0.0, img_out=None,
                  img_in=None):
         super().__init__()
-        self.rect = pygame.Rect(x, y, width, height);
-        self.out_time = out_time;
+        self.rect = pygame.Rect(x, y, width, height)
+        self.out_time = out_time
         self.in_time = in_time
-        self.cycle_time = self.out_time + self.in_time;
-        self.timer = phase_offset;
+        self.cycle_time = self.out_time + self.in_time
+        self.timer = phase_offset
         self.active = False
-        self.img_out = img_out;
+        self.img_out = img_out
         self.img_in = img_in
 
     def update(self, dt):
-        self.timer += dt;
-        phase = self.timer % self.cycle_time;
+        self.timer += dt
+        phase = self.timer % self.cycle_time
         self.active = phase < self.out_time
 
     def is_dangerous(self):
@@ -560,7 +550,7 @@ levels_data = [ #
         "fruits": [(160, SCREEN_HEIGHT // 2 + 20, "volcano"), (SCREEN_WIDTH - 140, SCREEN_HEIGHT // 2 - 30, "mirror"),
                    (SCREEN_WIDTH - 140, SCREEN_HEIGHT - 60, "invisible_wall")]
     },
-    {
+    {   # Level 3 Data (existing)
         "player1_start": (40, SCREEN_HEIGHT // 2 + 70), "player2_start": (40, SCREEN_HEIGHT // 2 - 50),
         "goal1_pos": (SCREEN_WIDTH - 50, 190), "goal2_pos": (SCREEN_WIDTH - 50, SCREEN_HEIGHT - 190),
         "laser_walls": [ # 衡的外面
@@ -598,41 +588,45 @@ levels_data = [ #
     },
     # Boss level will be handled separately, not in this list structure.
 ]
-current_level_index = 0 #
+current_level_index = 0
 
 # --- 遊戲物件群組 ---
-all_sprites = pygame.sprite.Group() #
-laser_wall_sprites = pygame.sprite.Group() #
-goal_sprites = pygame.sprite.Group() #
-player_sprites = pygame.sprite.Group() #
-coop_box_group = pygame.sprite.Group() #
-spike_trap_group = pygame.sprite.Group() #
-fruit_sprites = pygame.sprite.Group() #
-meteor_sprites = pygame.sprite.Group() #
-warning_sprites = pygame.sprite.Group() #
+all_sprites = pygame.sprite.Group()
+laser_wall_sprites = pygame.sprite.Group()
+goal_sprites = pygame.sprite.Group()
+player_sprites = pygame.sprite.Group()
+coop_box_group = pygame.sprite.Group()
+spike_trap_group = pygame.sprite.Group()
+fruit_sprites = pygame.sprite.Group()
+meteor_sprites = pygame.sprite.Group()
+warning_sprites = pygame.sprite.Group()
 
-# Boss Level Specific Groups
+# Boss 物件群組
 boss_group = pygame.sprite.GroupSingle() # For single boss
-throwable_objects_group = pygame.sprite.Group() #
+throwable_objects_group = pygame.sprite.Group()
 # boss_projectiles are managed within the Boss class instance's group
 
-# --- 遊戲物件實體 ---
+# --- 遊戲玩家實體 ---
 player1 = Player(0, 0, PLAYER1_COLOR, PLAYER1_DEAD_COLOR,
-                 {'up': pygame.K_w, 'down': pygame.K_s, 'left': pygame.K_a, 'right': pygame.K_d}, 0) #
+                 {'up': pygame.K_w, 'down': pygame.K_s, 'left': pygame.K_a, 'right': pygame.K_d}, 0)
 player2 = Player(0, 0, PLAYER2_COLOR, PLAYER2_DEAD_COLOR,
-                 {'up': pygame.K_UP, 'down': pygame.K_DOWN, 'left': pygame.K_LEFT, 'right': pygame.K_RIGHT}, 1) #
+                 {'up': pygame.K_UP, 'down': pygame.K_DOWN, 'left': pygame.K_LEFT, 'right': pygame.K_RIGHT}, 1)
 player_sprites.add(player1, player2)
 
-goal1 = Goal(0, 0, GOAL_P1_COLOR, 0) #
-goal2 = Goal(0, 0, GOAL_P2_COLOR, 1) #
-# coop_box is loaded per level
+#過關地板實體
+goal1 = Goal(0, 0, GOAL_P1_COLOR, 0)
+goal2 = Goal(0, 0, GOAL_P2_COLOR, 1)
 
-effect_manager = EffectManager() #
-boss_enemy = None # Will be initialized for boss level
+#果實效果管理
+effect_manager = EffectManager()
+
+#boss實體，等後續初始化生成setup_boss_level()
+boss_enemy = None
 
 # 新增 Boss 被擊敗後的區域
 boss_defeated_area_rect = None
 
+#載入排行榜畫面
 def load_leaderboard():
     global leaderboard_data, loaded_face_images_cache
     loaded_face_images_cache.clear() # Clear cache when reloading leaderboard
@@ -645,6 +639,7 @@ def load_leaderboard():
         leaderboard_data = []
         print(f"Warning: {LEADERBOARD_FILE} is corrupted or invalid. Starting with an empty leaderboard.")
 
+#排行榜儲存
 def save_leaderboard():
     global leaderboard_data
     leaderboard_data.sort(key=lambda x: (x.get('time', float('inf')), -x.get('score', 0)))
@@ -655,19 +650,20 @@ def save_leaderboard():
     except Exception as e:
         print(f"Error saving leaderboard: {e}")
 
-
-def add_leaderboard_entry(name, time_val, score_val, image_path_p1, image_path_p2): # MODIFIED
+# 新增排行榜名次
+def add_leaderboard_entry(name, time_val, score_val, image_path_p1, image_path_p2):
     global leaderboard_data
     leaderboard_data.append({
         "name": name, # Team/entry name
         "time": round(time_val, 2),
         "score": score_val,
-        "face_image_path_p1": image_path_p1, # MODIFIED
-        "face_image_path_p2": image_path_p2 # MODIFIED
+        "face_image_path_p1": image_path_p1,
+        "face_image_path_p2": image_path_p2
     })
 
 load_leaderboard() # Load at game start
 
+# 初始化攝影機以進行拍照
 def initialize_camera_for_capture():
     global cap, face_cascade, camera_capture_active, game_state
     if cap and cap.isOpened():
@@ -700,6 +696,7 @@ def initialize_camera_for_capture():
         release_camera_resources()
         game_state = STATE_SHOW_LEADERBOARD # Fallback
 
+# 釋放攝影機資源
 def release_camera_resources():
     global cap, camera_capture_active, camera_frame_surface
     if cap:
@@ -710,6 +707,7 @@ def release_camera_resources():
     # cv2.destroyAllWindows() # Keep OpenCV windows managed by their own logic if 'use_opencv' is true elsewhere
     print("攝影機資源已釋放。")
 
+# 處理攝影機畫面-畫框、翻轉
 def process_camera_frame():
     global cap, face_cascade, camera_frame_surface, game_state
     if not camera_capture_active or not cap or not cap.isOpened() or not face_cascade:
@@ -738,6 +736,7 @@ def process_camera_frame():
     temp_surface = pygame.surfarray.make_surface(frame_resized)
     camera_frame_surface = pygame.transform.rotate(temp_surface, -90)
 
+# --- 處理拍照  擷取畫面到排行榜照片---
 def handle_photo_capture(player_capture_idx): # player_capture_idx: 0 for P1, 1 for P2
     global cap, face_cascade, current_player_name # Entry/Team name
     global captured_face_image_path_p1, captured_face_image_path_p2
@@ -811,7 +810,7 @@ def handle_photo_capture(player_capture_idx): # player_capture_idx: 0 for P1, 1 
         post_capture_prompt_active = True
         return False
 
-# --- Boss Level Setup Function ---
+# --- Boss 初始設定 ---
 def setup_boss_level():
     global boss_enemy, game_state, game_time_elapsed, current_score # Added current_score for consistency
     # 播放Boss關卡音樂
@@ -839,6 +838,7 @@ def setup_boss_level():
     # No laser walls, goals, coop boxes, spikes in this basic boss level setup. Can be added if needed.
     game_state = STATE_BOSS_LEVEL
 
+# --- 關卡載入函數 ---
 def load_level(level_idx): #
     global game_state, current_level_index, game_time_elapsed, current_score# Added game_time_elapsed, current_score reset
     if level_idx >= len(levels_data):
@@ -850,13 +850,13 @@ def load_level(level_idx): #
 
     play_music(LEVEL_1_MUSIC) #
 
-    laser_wall_sprites.empty();
-    goal_sprites.empty();
+    laser_wall_sprites.empty()
+    goal_sprites.empty()
     coop_box_group.empty()
-    spike_trap_group.empty();
-    fruit_sprites.empty();
-    meteor_sprites.empty();
-    warning_sprites.empty();
+    spike_trap_group.empty()
+    fruit_sprites.empty()
+    meteor_sprites.empty()
+    warning_sprites.empty()
     throwable_objects_group.empty() # Clear throwable from previous attempts
     effect_manager.reset_all_effects()
     game_time_elapsed = 0.0 # Reset timer for new regular level
@@ -888,14 +888,14 @@ def load_level(level_idx): #
     obstacle_sprites_for_fruits = pygame.sprite.Group(laser_wall_sprites.sprites(), spike_trap_group.sprites(),
                                                       coop_box_group.sprites(), goal_sprites.sprites())
     for fruit_data in level.get("fruits", []):
-        fx, fy, ftype = fruit_data;
+        fx, fy, ftype = fruit_data
         original_pos_valid = True
-        fruit_rect = pygame.Rect(0, 0, FRUIT_RADIUS * 2, FRUIT_RADIUS * 2);
+        fruit_rect = pygame.Rect(0, 0, FRUIT_RADIUS * 2, FRUIT_RADIUS * 2)
         fruit_rect.center = (fx, fy)
         for obs in obstacle_sprites_for_fruits:
             if fruit_rect.colliderect(obs.rect): original_pos_valid = False; break
         if original_pos_valid:
-            if not (FRUIT_RADIUS <= fruit_rect.centerx <= SCREEN_WIDTH - FRUIT_RADIUS and \
+            if not (FRUIT_RADIUS <= fruit_rect.centerx <= SCREEN_WIDTH - FRUIT_RADIUS and
                     FRUIT_RADIUS <= fruit_rect.centery <= SCREEN_HEIGHT - FRUIT_RADIUS): original_pos_valid = False
         if original_pos_valid:
             fruit_sprites.add(Fruit(fx, fy, ftype))
@@ -904,7 +904,7 @@ def load_level(level_idx): #
 
     game_state = STATE_PLAYING
 
-# --- Save/Load Functions ---
+# --- 儲存遊戲存檔 ---
 def save_game_state(): # MODIFIED to handle saving from pause
     global current_level_index, game_state, player1, player2, boss_enemy, effect_manager, throwable_objects_group, state_before_pause
 
@@ -1023,6 +1023,7 @@ def save_game_state(): # MODIFIED to handle saving from pause
     except Exception as e:
         print(f"儲存遊戲狀態時發生錯誤: {e}")
 
+# --- 載入遊戲存檔 ---
 def load_game_state_from_file():
     global current_level_index, game_state, player1, player2, boss_enemy, effect_manager
     global laser_wall_sprites, goal_sprites, coop_box_group, spike_trap_group, fruit_sprites
@@ -1214,6 +1215,7 @@ def load_game_state_from_file():
     game_state = saved_game_state_type # Ensure game_state is finally set to the loaded gameplay state
     print("遊戲狀態已載入。")
 
+# --- 繪製排行榜畫面 ---
 def draw_leaderboard_screen(): # MODIFIED
     global leaderboard_menu_selected_index # Ensure access to the global
     screen.fill((20, 20, 40))
@@ -1363,6 +1365,7 @@ def draw_leaderboard_screen(): # MODIFIED
         screen.blit(option_surf, (current_x_pos, options_y_pos))
         current_x_pos += option_surf.get_width() + option_padding
 
+# --- 設定關卡選擇畫面 ---
 def populate_level_select_options():
     global level_select_options
     level_select_options = []
@@ -1375,6 +1378,7 @@ def populate_level_select_options():
 level_select_background = pygame.image.load(os.path.join('plays_animation_art', 'Background_menu.png')).convert()
 level_select_background = pygame.transform.scale(level_select_background, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
+# --- 畫關卡選擇畫面 ---
 def draw_level_select_menu():
     screen.blit(level_select_background, (0, 0))  # Draw the background image
     title_text = font_large.render("選擇關卡", True, TEXT_COLOR)
@@ -1386,6 +1390,7 @@ def draw_level_select_menu():
         text_rect = text_surf.get_rect(center=(SCREEN_WIDTH // 2, 200 + i * 60))
         screen.blit(text_surf, text_rect)
 
+# --- 畫暫停選單 ---
 def draw_pause_menu():
     # Draw a semi-transparent overlay
     overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
@@ -1401,28 +1406,11 @@ def draw_pause_menu():
         text_rect = text_surf.get_rect(center=(SCREEN_WIDTH // 2, 250 + i * 70))
         screen.blit(text_surf, text_rect)
 
-game_state = STATE_START_SCREEN
-last_game_state = None
-running = True
-
-# --- 音樂初始化 ---
-pygame.mixer.init() #
-start_screen_music_played = False
-
-prompt_text_visible = True
-
-# ---復活設置---
-REVIVE_HOLD_TIME = 1.5 #
-revive_progress = 0.0 #
-revive_target = None #
-
-# Start the drawing window in a separate thread
-start_drawing_thread()
-
 # Load the background image for the main menu
 default_menu_background = pygame.image.load(os.path.join('plays_animation_art', 'Background_menu.png')).convert()
 default_menu_background = pygame.transform.scale(default_menu_background, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
+# --- 繪製遊戲狀態訊息 ---
 def draw_game_state_messages():
     global game_time_elapsed, current_score
 
@@ -1468,9 +1456,9 @@ def draw_game_state_messages():
 
         p1_status_text = "存活" if player1.is_alive else "死亡";
         p2_status_text = "存活" if player2.is_alive else "死亡"
-        p1_text = font_tiny.render(f"玩家1: {p1_status_text}", True, PLAYER1_COLOR);
+        p1_text = font_tiny.render(f"玩家1: {p1_status_text}", True, PLAYER1_COLOR)
         screen.blit(p1_text, (10, 50))
-        p2_text = font_tiny.render(f"玩家2: {p2_status_text}", True, PLAYER2_COLOR);
+        p2_text = font_tiny.render(f"玩家2: {p2_status_text}", True, PLAYER2_COLOR)
         screen.blit(p2_text, (10, 75))
         if (player1.is_alive and not player2.is_alive) or (player2.is_alive and not player1.is_alive):
             revive_hint = font_tiny.render("請 P1 按住'F' / P2 按住'.' 幫隊友復活", True, REVIVE_PROMPT_COLOR) #
@@ -1482,11 +1470,11 @@ def draw_game_state_messages():
             screen.blit(effect_surf, (10, y_offset));
             y_offset += 20
         if player1.is_alive and player2.is_alive and coop_box_group:
-            first_box = next(iter(coop_box_group));
+            first_box = next(iter(coop_box_group))
             p1_near = player1.pos.distance_to(first_box.pos) < COOP_BOX_PUSH_RADIUS
             p2_near = player2.pos.distance_to(first_box.pos) < COOP_BOX_PUSH_RADIUS #
             if p1_near and p2_near: #
-                push_hint = font_tiny.render("兩人靠近可推箱", True, (225, 210, 80));
+                push_hint = font_tiny.render("兩人靠近可推箱", True, (225, 210, 80))
                 screen.blit(push_hint, (SCREEN_WIDTH // 2 - push_hint.get_width() // 2, 40))
     elif game_state == STATE_BOSS_LEVEL:
         boss_level_text = font_large.render("!! BOSS BATTLE !!", True, (255, 50, 50))
@@ -1496,7 +1484,7 @@ def draw_game_state_messages():
         timer_text_surf = font_tiny.render(f"時間: {timer_val_str}", True, TEXT_COLOR)
         screen.blit(timer_text_surf, (SCREEN_WIDTH - timer_text_surf.get_width() - 10, 60))
 
-        p1_status_text = "存活" if player1.is_alive else "死亡";
+        p1_status_text = "存活" if player1.is_alive else "死亡"
         p2_status_text = "存活" if player2.is_alive else "死亡"
         p1_text = font_tiny.render(f"玩家1: {p1_status_text}", True, PLAYER1_COLOR);
         screen.blit(p1_text, (10, SCREEN_HEIGHT - 80))
@@ -1520,188 +1508,211 @@ def draw_game_state_messages():
             p1_action_hint = font_effect.render(action_hint_text, True, WHITE)
             screen.blit(p1_action_hint, (10, SCREEN_HEIGHT - 100))
 
-populate_level_select_options() # NEW: Initialize level select options
+
+# --- 音樂初始化 ---
+pygame.mixer.init()
+start_screen_music_played = False
+prompt_text_visible = True
+final_battle_music_started = False
+
+# ---復活設置---
+REVIVE_HOLD_TIME = 1.5
+revive_progress = 0.0
+revive_target = None
+#---初始化--
+#遊戲狀態
+game_state = STATE_START_SCREEN
+last_game_state = None
+running = True
+
+populate_level_select_options() # 選擇關卡菜單內容初始化
+load_leaderboard() # 載入排行綁內容
+start_drawing_thread()# 開啟opencv畫布
 
 # ---遊戲主程式循環---
-final_battle_music_started = False
-while running: #
-    dt = clock.tick(FPS) / 1000.0 #
-    keys = pygame.key.get_pressed() #
 
+while running:
+    dt = clock.tick(FPS) / 1000.0
+    keys = pygame.key.get_pressed()
+
+    # --- 儲存 ---
     if show_save_feedback:
         save_feedback_timer -= dt
         if save_feedback_timer <= 0:
             show_save_feedback = False
 
-    for event in pygame.event.get(): #
+    #讀取事件
+    for event in pygame.event.get():
+        # --- 檢查退出事件 ---
         if event.type == pygame.QUIT:
-            running = False #
+            running = False
         elif event.type == pygame.USEREVENT + 1: # USEREVENT 應該是 elif，以避免同時是QUIT又是USEREVENT的罕見情況
-            if boss_enemy: boss_enemy.revert_color() #
+            if boss_enemy: boss_enemy.revert_color()
 
-        elif event.type == pygame.KEYDOWN: #
+        # 按鍵事件
+        elif event.type == pygame.KEYDOWN:
             # --- 全域熱鍵 ---
-            if event.key == pygame.K_F5: #
+            if event.key == pygame.K_F5:
                 save_game_state() # save_game_state will handle context #
-            elif event.key == pygame.K_F9: #
-                pygame.mixer.music.stop() #
-                load_game_state_from_file() #
+            elif event.key == pygame.K_F9:
+                pygame.mixer.music.stop()
+                load_game_state_from_file()
                 if game_state != STATE_PAUSED:
                     pass
                 else:
                     pygame.mixer.music.pause()
 
-            # --- STATE_START_SCREEN ---
+            # --- 主選單狀態畫面---
             if game_state == STATE_START_SCREEN: # # 從 elif 改為 if (或保持 elif 如果 F5/F9 之後不應有其他操作)
-                if event.key == pygame.K_UP: #
-                    start_menu_selected_index = (start_menu_selected_index - 1) % len(start_menu_options) #
-                elif event.key == pygame.K_DOWN: #
-                    start_menu_selected_index = (start_menu_selected_index + 1) % len(start_menu_options) #
-                elif event.key == pygame.K_RETURN: #
-                    selected_option_text = start_menu_options[start_menu_selected_index] #
+                if event.key == pygame.K_UP:
+                    start_menu_selected_index = (start_menu_selected_index - 1) % len(start_menu_options)
+                elif event.key == pygame.K_DOWN:
+                    start_menu_selected_index = (start_menu_selected_index + 1) % len(start_menu_options)
+                elif event.key == pygame.K_RETURN:
+                    selected_option_text = start_menu_options[start_menu_selected_index]
 
-                    if selected_option_text == "開始新遊戲": #
-                        current_level_index = 0 #
-                        load_level(current_level_index) #
-                    elif selected_option_text == "選擇關卡": #
+                    if selected_option_text == "開始新遊戲":
+                        current_level_index = 0
+                        load_level(current_level_index)
+                    elif selected_option_text == "選擇關卡":
                         level_select_selected_index = 0 # Reset selection for level select screen #
-                        game_state = STATE_LEVEL_SELECT #
-                    elif selected_option_text == "載入遊戲": #
+                        game_state = STATE_LEVEL_SELECT
+                    elif selected_option_text == "載入遊戲":
                         pygame.mixer.music.stop()
-                        load_game_state_from_file() #
-                    elif selected_option_text == "查看排行榜": #
-                        leaderboard_menu_selected_index = 0 #
-                        load_leaderboard() #
-                        game_state = STATE_SHOW_LEADERBOARD #
-                    elif selected_option_text == "離開遊戲": #
-                        running = False #
-                elif event.key == pygame.K_q: #
+                        load_game_state_from_file()
+                    elif selected_option_text == "查看排行榜":
+                        leaderboard_menu_selected_index = 0
+                        load_leaderboard()
+                        game_state = STATE_SHOW_LEADERBOARD
+                    elif selected_option_text == "離開遊戲":
+                        running = False
+                elif event.key == pygame.K_q:
                     if "離開遊戲" in start_menu_options[
-                        start_menu_selected_index] or "離開遊戲" not in start_menu_options: #
-                        running = False #
+                        start_menu_selected_index] or "離開遊戲" not in start_menu_options:
+                        running = False
 
-            # --- STATE_LEVEL_SELECT ---
+            # --- 關卡選擇狀態畫面 ---
             elif game_state == STATE_LEVEL_SELECT: # NEW: Event handling for level select #
-                if event.key == pygame.K_UP: #
-                    level_select_selected_index = (level_select_selected_index - 1) % len(level_select_options) #
-                elif event.key == pygame.K_DOWN: #
-                    level_select_selected_index = (level_select_selected_index + 1) % len(level_select_options) #
-                elif event.key == pygame.K_RETURN: #
-                    selected_option_text = level_select_options[level_select_selected_index] #
+                if event.key == pygame.K_UP:
+                    level_select_selected_index = (level_select_selected_index - 1) % len(level_select_options)
+                elif event.key == pygame.K_DOWN:
+                    level_select_selected_index = (level_select_selected_index + 1) % len(level_select_options)
+                elif event.key == pygame.K_RETURN:
+                    selected_option_text = level_select_options[level_select_selected_index]
                     if selected_option_text == "返回主選單":
-                        game_state = STATE_START_SCREEN #
-                    elif selected_option_text == "魔王關卡": #
+                        game_state = STATE_START_SCREEN
+                    elif selected_option_text == "魔王關卡":
                         game_time_elapsed = 0.0 # Reset timer for boss if selected directly #
                         current_score = 0 # Reset score if boss selected directly #
-                        setup_boss_level() #
+                        setup_boss_level()
                     else: # It's "關卡 X" #
-                        level_num_str = selected_option_text.split(" ")[1] #
-                        selected_level_idx = int(level_num_str) - 1 #
-                        if 0 <= selected_level_idx < len(levels_data): #
-                            current_level_index = selected_level_idx #
-                            load_level(current_level_index) #
+                        level_num_str = selected_option_text.split(" ")[1]
+                        selected_level_idx = int(level_num_str) - 1
+                        if 0 <= selected_level_idx < len(levels_data):
+                            current_level_index = selected_level_idx
+                            load_level(current_level_index)
                         else: #
-                            print(f"無效的選擇關卡索引: {selected_level_idx}") #
+                            print(f"無效的選擇關卡索引: {selected_level_idx}")
                             game_state = STATE_START_SCREEN # Fallback #
                 elif event.key == pygame.K_ESCAPE or event.key == pygame.K_b: # Allow Esc or B to go back #
-                    game_state = STATE_START_SCREEN #
+                    game_state = STATE_START_SCREEN
 
-            # --- STATE_PLAYING or STATE_BOSS_LEVEL ---
+            # --- 解謎狀態畫面或BOSS關狀態畫面 ---
             elif game_state == STATE_PLAYING or game_state == STATE_BOSS_LEVEL: # MODIFIED to include ESC for pause #
-                if event.key == pygame.K_ESCAPE: #
-                    state_before_pause = game_state #
-                    game_state = STATE_PAUSED #
+                if event.key == pygame.K_ESCAPE:
+                    state_before_pause = game_state
+                    game_state = STATE_PAUSED
                     pause_menu_selected_index = 0 # Reset selection #
                     pygame.mixer.music.pause() # Pause current music #
                 # 如果不是 ESCAPE，且當前是 BOSS 關卡，則處理 BOSS 關卡的特定按鍵
                 elif game_state == STATE_BOSS_LEVEL: # Boss specific actions # # 再次檢查 game_state 因為可能已被改成 PAUSED
-                    if event.key == ACTION_KEY_P1: #
-                        player1.handle_action_key(throwable_objects_group) #
-                    elif event.key == DRAW_ITEM_KEY_P2: #
+                    if event.key == ACTION_KEY_P1:
+                        player1.handle_action_key(throwable_objects_group)
+                    elif event.key == DRAW_ITEM_KEY_P2:
                         target_spawn_pos = player1.pos if player1.is_alive else pygame.math.Vector2(
-                            ITEM_SPAWN_POS_DEFAULT) #
-                        player2.handle_draw_item_key(throwable_objects_group, target_spawn_pos,get_shape_from_queue()) #
+                            ITEM_SPAWN_POS_DEFAULT)
+                        player2.handle_draw_item_key(throwable_objects_group, target_spawn_pos,get_shape_from_queue())
 
-            # --- STATE_PAUSED ---
+            # --- 暫停狀態畫面 ---
             elif game_state == STATE_PAUSED: # NEW: Event handling for pause menu #
                 if event.key == pygame.K_UP: #dw
-                    pause_menu_selected_index = (pause_menu_selected_index - 1) % len(pause_menu_options) #
-                elif event.key == pygame.K_DOWN: #
-                    pause_menu_selected_index = (pause_menu_selected_index + 1) % len(pause_menu_options) #
-                elif event.key == pygame.K_RETURN: #
+                    pause_menu_selected_index = (pause_menu_selected_index - 1) % len(pause_menu_options)
+                elif event.key == pygame.K_DOWN:
+                    pause_menu_selected_index = (pause_menu_selected_index + 1) % len(pause_menu_options)
+                elif event.key == pygame.K_RETURN:
                     selected_action = pause_menu_options[pause_menu_selected_index] #
                     if "繼續遊戲" in selected_action: # Resume #
-                        game_state = state_before_pause #
-                        pygame.mixer.music.unpause() #
+                        game_state = state_before_pause
+                        pygame.mixer.music.unpause()
                     elif "重新開始關卡" in selected_action: # Restart Level #
                         pygame.mixer.music.unpause()
-                        if state_before_pause == STATE_PLAYING: #
-                            load_level(current_level_index) #
-                        elif state_before_pause == STATE_BOSS_LEVEL: #
+                        if state_before_pause == STATE_PLAYING:
+                            load_level(current_level_index)
+                        elif state_before_pause == STATE_BOSS_LEVEL:
                             game_time_elapsed = 0.0 # Reset timer if restarting boss from pause #
-                            setup_boss_level() #
+                            setup_boss_level()
                     elif "儲存遊戲" in selected_action: # Save Game #
-                        save_game_state() #
+                        save_game_state()
                         show_save_feedback = True
                         save_feedback_timer = SAVE_FEEDBACK_DURATION
                     elif "載入遊戲" in selected_action: # Load Game #
                         pygame.mixer.music.stop()
-                        load_game_state_from_file() #
+                        load_game_state_from_file()
                     elif "回到主選單" in selected_action: # Back to Main Menu #
 
                         final_player_score = 0
                         pygame.mixer.music.unpause()
-                        game_state = STATE_START_SCREEN #
+                        game_state = STATE_START_SCREEN
                     elif "離開遊戲" in selected_action: # Quit #
                         running = False #
                 elif event.key == pygame.K_ESCAPE: # Allow ESC to also resume #
-                    game_state = state_before_pause #
-                    pygame.mixer.music.unpause() #
+                    game_state = state_before_pause
+                    pygame.mixer.music.unpause()
 
                 elif event.key == pygame.K_r and "重新開始關卡 (R)" in pause_menu_options[pause_menu_selected_index]: #
-                    pygame.mixer.music.unpause() #
+                    pygame.mixer.music.unpause()
                     if state_before_pause == STATE_PLAYING:
-                        load_level(current_level_index) #
+                        load_level(current_level_index)
                     elif state_before_pause == STATE_BOSS_LEVEL:
-                        setup_boss_level() #
-                elif event.key == pygame.K_F5 and "儲存遊戲 (F5)" in pause_menu_options[pause_menu_selected_index]: #
+                        setup_boss_level()
+                elif event.key == pygame.K_F5 and "儲存遊戲 (F5)" in pause_menu_options[pause_menu_selected_index]:
                     save_game_state() #
-                elif event.key == pygame.K_F9 and "載入遊戲 (F9)" in pause_menu_options[pause_menu_selected_index]: #
-                    pygame.mixer.music.stop() #
-                    load_game_state_from_file() #
-                elif event.key == pygame.K_b and "回到主選單 (B)" in pause_menu_options[pause_menu_selected_index]: #
-                    pygame.mixer.music.unpause() #
-                    game_state = STATE_START_SCREEN #
-                elif event.key == pygame.K_q and "離開遊戲 (Q)" in pause_menu_options[pause_menu_selected_index]: #
-                    running = False #
+                elif event.key == pygame.K_F9 and "載入遊戲 (F9)" in pause_menu_options[pause_menu_selected_index]:
+                    pygame.mixer.music.stop()
+                    load_game_state_from_file()
+                elif event.key == pygame.K_b and "回到主選單 (B)" in pause_menu_options[pause_menu_selected_index]:
+                    pygame.mixer.music.unpause()
+                    game_state = STATE_START_SCREEN
+                elif event.key == pygame.K_q and "離開遊戲 (Q)" in pause_menu_options[pause_menu_selected_index]:
+                    running = False
 
-            # --- STATE_GAME_OVER ---
+            # --- 遊戲結束死亡畫面 ---
             elif game_state == STATE_GAME_OVER: # Simpler game over, only R to restart all #
-                if event.key == pygame.K_r: #
-                    current_level_index = 0 #
+                if event.key == pygame.K_r:
+                    current_level_index = 0
                     final_player_score = 0
-                    load_level(current_level_index) #
+                    load_level(current_level_index)
 
-            # --- STATE_ASK_CAMERA ---
-            elif game_state == STATE_ASK_CAMERA: #
-                if event.key == pygame.K_y: #
-                    game_state = STATE_CAMERA_INPUT #
-                    player_name_input_active = True #
-                    camera_capture_active = False #
-                    post_capture_prompt_active = False #
-                    current_player_name = "" #
-                    captured_face_image_path_p1 = None #
-                    captured_face_image_path_p2 = None #
+            # --- 是否拍攝照片狀態畫面 ---
+            elif game_state == STATE_ASK_CAMERA:
+                if event.key == pygame.K_y:
+                    game_state = STATE_CAMERA_INPUT
+                    player_name_input_active = True
+                    camera_capture_active = False
+                    post_capture_prompt_active = False
+                    current_player_name = ""
+                    captured_face_image_path_p1 = None
+                    captured_face_image_path_p2 = None
                     current_capture_player_index = 0 # Start with P1 #
-                    photo_taken_for_current_player_flag = False #
-                elif event.key == pygame.K_n: #
+                    photo_taken_for_current_player_flag = False
+                elif event.key == pygame.K_n:
                     add_leaderboard_entry("Anonymous", final_game_time, final_player_score, None,
                                           None) # Add with no photos #
-                    save_leaderboard() #
-                    leaderboard_menu_selected_index = 0 #
-                    game_state = STATE_SHOW_LEADERBOARD #
+                    save_leaderboard()
+                    leaderboard_menu_selected_index = 0
+                    game_state = STATE_SHOW_LEADERBOARD
 
-            # --- STATE_CAMERA_INPUT ---
+            # --- 拍攝照片狀態畫面 ---
             elif game_state == STATE_CAMERA_INPUT:
                 if player_name_input_active:
                     if event.key == pygame.K_RETURN:
@@ -1724,57 +1735,57 @@ while running: #
                         handle_photo_capture(current_capture_player_index) # This will set post_capture_prompt_active #
                         photo_taken_for_current_player_flag = True # Mark that an attempt was made #
                     elif event.key == pygame.K_s: # Skip current player's photo #
-                        if current_capture_player_index == 0: #
-                            captured_face_image_path_p1 = None #
-                            print("玩家1 照片已略過。") #
+                        if current_capture_player_index == 0:
+                            captured_face_image_path_p1 = None
+                            print("玩家1 照片已略過。")
                         else: #
-                            captured_face_image_path_p2 = None #
-                            print("玩家2 照片已略過。") #
-                        photo_taken_for_current_player_flag = True #
+                            captured_face_image_path_p2 = None
+                            print("玩家2 照片已略過。")
+                        photo_taken_for_current_player_flag = True
                         post_capture_prompt_active = True # Go to prompt #
                     elif event.key == pygame.K_q: # Quit entire capture to leaderboard #
-                        release_camera_resources() #
+                        release_camera_resources()
                         add_leaderboard_entry(current_player_name, final_game_time, final_player_score,
-                                              captured_face_image_path_p1, captured_face_image_path_p2) #
-                        save_leaderboard() #
+                                              captured_face_image_path_p1, captured_face_image_path_p2)
+                        save_leaderboard()
                         leaderboard_menu_selected_index = 0 # Reset selection
-                        game_state = STATE_SHOW_LEADERBOARD #
+                        game_state = STATE_SHOW_LEADERBOARD
 
                 elif post_capture_prompt_active: # After a capture/skip attempt for the current player #
                     if current_capture_player_index == 0: # P1's post-capture options #
                         if event.key == pygame.K_r: # Retry P1 #
-                            post_capture_prompt_active = False #
-                            photo_taken_for_current_player_flag = False #
+                            post_capture_prompt_active = False
+                            photo_taken_for_current_player_flag = False
                         elif event.key == pygame.K_n: # Next (to P2) #
-                            current_capture_player_index = 1 #
-                            post_capture_prompt_active = False #
-                            photo_taken_for_current_player_flag = False #
-                            if not cap or not cap.isOpened(): initialize_camera_for_capture() #
+                            current_capture_player_index = 1
+                            post_capture_prompt_active = False
+                            photo_taken_for_current_player_flag = False
+                            if not cap or not cap.isOpened(): initialize_camera_for_capture()
                         elif event.key == pygame.K_f: # Finish (save with P1 only, P2 skipped) #
                             add_leaderboard_entry(current_player_name, final_game_time, final_player_score,
-                                                  captured_face_image_path_p1, None) #
-                            save_leaderboard() #
-                            release_camera_resources() #
+                                                  captured_face_image_path_p1, None)
+                            save_leaderboard()
+                            release_camera_resources()
                             leaderboard_menu_selected_index = 0 # Reset selection
-                            game_state = STATE_SHOW_LEADERBOARD #
+                            game_state = STATE_SHOW_LEADERBOARD
 
                     elif current_capture_player_index == 1: # P2's post-capture options #
                         if event.key == pygame.K_r: # Retry P2 #
-                            post_capture_prompt_active = False #
-                            photo_taken_for_current_player_flag = False #
+                            post_capture_prompt_active = False
+                            photo_taken_for_current_player_flag = False
                         elif event.key == pygame.K_b: # Back to P1's post-capture options #
-                            current_capture_player_index = 0 #
+                            current_capture_player_index = 0
                             post_capture_prompt_active = True # Stay in prompt mode, but for P1 #
                             photo_taken_for_current_player_flag = True # P1's previous status #
                         elif event.key == pygame.K_f: # Finish (save with P1 and P2 photos) #
                             add_leaderboard_entry(current_player_name, final_game_time, final_player_score,
-                                                  captured_face_image_path_p1, captured_face_image_path_p2) #
-                            save_leaderboard() #
-                            release_camera_resources() #
+                                                  captured_face_image_path_p1, captured_face_image_path_p2)
+                            save_leaderboard()
+                            release_camera_resources()
                             leaderboard_menu_selected_index = 0 # Reset selection
-                            game_state = STATE_SHOW_LEADERBOARD #
+                            game_state = STATE_SHOW_LEADERBOARD
 
-            # --- STATE_SHOW_LEADERBOARD ---
+            # --- 排行榜狀態畫面 ---
             # MODIFIED event handling for leaderboard menu
             elif game_state == STATE_SHOW_LEADERBOARD:
                 if event.key == pygame.K_LEFT:
@@ -1822,92 +1833,94 @@ while running: #
                 collided_fruits = pygame.sprite.spritecollide(player, fruit_sprites, True)
                 for fruit in collided_fruits:
 
-                    if current_score < MAX_TOTAL_SCORE: #
-                            current_score += SCORE_FRUIT_VALUE #
+                    if current_score < MAX_TOTAL_SCORE:
+                            current_score += SCORE_FRUIT_VALUE
 
                     effect_manager.apply_effect(fruit.fruit_type, player.player_id)
 
-        if effect_manager.should_spawn_meteor(): #
-            spawn_x = random.randint(METEOR_SIZE, SCREEN_WIDTH - METEOR_SIZE);
-            spawn_y = random.randint(METEOR_SIZE, SCREEN_HEIGHT - METEOR_SIZE) #
-            warning_sprites.add(Warning(spawn_x, spawn_y, METEOR_WARNING_TIME));
-            effect_manager.reset_meteor_timer() #
-        for warning in list(warning_sprites): #
-            if warning.update(dt): meteor_sprites.add(Meteor(warning.spawn_pos[0], warning.spawn_pos[1])) #
-        warning_sprites.update(dt);
-        meteor_sprites.update(dt) #
+        if effect_manager.should_spawn_meteor():
+            spawn_x = random.randint(METEOR_SIZE, SCREEN_WIDTH - METEOR_SIZE)
+            spawn_y = random.randint(METEOR_SIZE, SCREEN_HEIGHT - METEOR_SIZE)
+            warning_sprites.add(Warning(spawn_x, spawn_y, METEOR_WARNING_TIME))
+            effect_manager.reset_meteor_timer()
+        for warning in list(warning_sprites):
+            if warning.update(dt): meteor_sprites.add(Meteor(warning.spawn_pos[0], warning.spawn_pos[1]))
+        warning_sprites.update(dt)
+        meteor_sprites.update(dt)
 
-        if player1.is_alive and player2.is_alive: #
-            for coop_box in coop_box_group: #
-                p1_near = player1.pos.distance_to(coop_box.pos) < COOP_BOX_PUSH_RADIUS;
-                p2_near = player2.pos.distance_to(coop_box.pos) < COOP_BOX_PUSH_RADIUS #
-                if p1_near and p2_near: #
+        # 箱子推動判斷
+        if player1.is_alive and player2.is_alive:
+            for coop_box in coop_box_group:
+                p1_near = player1.pos.distance_to(coop_box.pos) < COOP_BOX_PUSH_RADIUS
+                p2_near = player2.pos.distance_to(coop_box.pos) < COOP_BOX_PUSH_RADIUS
+                if p1_near and p2_near:
                     total_dir = pygame.math.Vector2(0, 0)
-                    if keys[player1.control_keys['right']]: total_dir.x += 1; #
-                    if keys[player1.control_keys['left']]: total_dir.x -= 1 #
-                    if keys[player1.control_keys['down']]: total_dir.y += 1 #
-                    if keys[player1.control_keys['up']]: total_dir.y -= 1 #
-                    if keys[player2.control_keys['right']]: total_dir.x += 1 #
-                    if keys[player2.control_keys['left']]: total_dir.x -= 1 #
-                    if keys[player2.control_keys['down']]: total_dir.y += 1 #
-                    if keys[player2.control_keys['up']]: total_dir.y -= 1 #
-                    if total_dir.length_squared() > 0: total_dir.normalize_ip(); coop_box.move(total_dir,
-                                                                                               laser_wall_sprites) #
-        for _ in range(CHAIN_ITERATIONS): #
+                    if keys[player1.control_keys['right']]: total_dir.x += 1;
+                    if keys[player1.control_keys['left']]: total_dir.x -= 1
+                    if keys[player1.control_keys['down']]: total_dir.y += 1
+                    if keys[player1.control_keys['up']]: total_dir.y -= 1
+                    if keys[player2.control_keys['right']]: total_dir.x += 1
+                    if keys[player2.control_keys['left']]: total_dir.x -= 1
+                    if keys[player2.control_keys['down']]: total_dir.y += 1
+                    if keys[player2.control_keys['up']]: total_dir.y -= 1
+                    if total_dir.length_squared() > 0: total_dir.normalize_ip(); coop_box.move(total_dir,laser_wall_sprites)
+        # 鎖鏈拉扯判斷
+        for _ in range(CHAIN_ITERATIONS):
             if player1.is_alive and player2.is_alive:
-                p1_pos_vec = player1.pos;
-                p2_pos_vec = player2.pos;
-                delta = p2_pos_vec - p1_pos_vec;
+                p1_pos_vec = player1.pos
+                p2_pos_vec = player2.pos
+                delta = p2_pos_vec - p1_pos_vec
                 distance = delta.length()
-                if distance > CHAIN_MAX_LENGTH and distance != 0: #
-                    diff = (distance - CHAIN_MAX_LENGTH) / distance; #
-                    p1_new_pos = player1.pos + delta * 0.5 * diff;
+                if distance > CHAIN_MAX_LENGTH and distance != 0:
+                    diff = (distance - CHAIN_MAX_LENGTH) / distance
+                    p1_new_pos = player1.pos + delta * 0.5 * diff
                     p2_new_pos = player2.pos - delta * 0.5 * diff
                     player1.pos.x = max(player1.rect.width // 2,
-                                        min(p1_new_pos.x, SCREEN_WIDTH - player1.rect.width // 2));
+                                        min(p1_new_pos.x, SCREEN_WIDTH - player1.rect.width // 2))
                     player1.pos.y = max(player1.rect.height // 2,
                                         min(p1_new_pos.y, SCREEN_HEIGHT - player1.rect.height // 2))
                     player2.pos.x = max(player2.rect.width // 2,
-                                        min(p2_new_pos.x, SCREEN_WIDTH - player2.rect.width // 2));
+                                        min(p2_new_pos.x, SCREEN_WIDTH - player2.rect.width // 2))
                     player2.pos.y = max(player2.rect.height // 2,
                                         min(p2_new_pos.y, SCREEN_HEIGHT - player2.rect.height // 2))
-                    player1.rect.center = player1.pos;
+                    player1.rect.center = player1.pos
                     player2.rect.center = player2.pos
             elif player1.is_alive and not player2.is_alive and player2.death_pos:
-                delta = player2.death_pos - player1.pos;
+                delta = player2.death_pos - player1.pos
                 distance = delta.length()
-                if distance > CHAIN_MAX_LENGTH and distance != 0: #
-                    diff_factor = (distance - CHAIN_MAX_LENGTH) / distance; #
+                if distance > CHAIN_MAX_LENGTH and distance != 0:
+                    diff_factor = (distance - CHAIN_MAX_LENGTH) / distance
                     p1_new_pos = player1.pos + delta * diff_factor
                     player1.pos.x = max(player1.rect.width // 2,
-                                        min(p1_new_pos.x, SCREEN_WIDTH - player1.rect.width // 2));
+                                        min(p1_new_pos.x, SCREEN_WIDTH - player1.rect.width // 2))
                     player1.pos.y = max(player1.rect.height // 2,
-                                        min(p1_new_pos.y, SCREEN_HEIGHT - player1.rect.height // 2));
+                                        min(p1_new_pos.y, SCREEN_HEIGHT - player1.rect.height // 2))
                     player1.rect.center = player1.pos
             elif player2.is_alive and not player1.is_alive and player1.death_pos:
-                delta = player1.death_pos - player2.pos;
+                delta = player1.death_pos - player2.pos
                 distance = delta.length()
-                if distance > CHAIN_MAX_LENGTH and distance != 0: #
-                    diff_factor = (distance - CHAIN_MAX_LENGTH) / distance; #
+                if distance > CHAIN_MAX_LENGTH and distance != 0:
+                    diff_factor = (distance - CHAIN_MAX_LENGTH) / distance
                     p2_new_pos = player2.pos + delta * diff_factor
                     player2.pos.x = max(player2.rect.width // 2,
-                                        min(p2_new_pos.x, SCREEN_WIDTH - player2.rect.width // 2));
+                                        min(p2_new_pos.x, SCREEN_WIDTH - player2.rect.width // 2))
                     player2.pos.y = max(player2.rect.height // 2,
-                                        min(p2_new_pos.y, SCREEN_HEIGHT - player2.rect.height // 2));
+                                        min(p2_new_pos.y, SCREEN_HEIGHT - player2.rect.height // 2))
                     player2.rect.center = player2.pos
-        #print(final_player_score)
+
+        #過關判斷
         goal1.update_status(player1)
-        goal2.update_status(player2) #
-        if goal1.is_active and goal2.is_active and player1.is_alive and player2.is_alive: #
-            current_level_index += 1 #
+        goal2.update_status(player2)
+        if goal1.is_active and goal2.is_active and player1.is_alive and player2.is_alive:
+            current_level_index += 1
             # 關卡過關時累加分數
             final_player_score += current_score
             load_level(current_level_index) # This might change game_state to STATE_BOSS_LEVEL
-        if not player1.is_alive and not player2.is_alive: game_state = STATE_GAME_OVER #
+        if not player1.is_alive and not player2.is_alive: game_state = STATE_GAME_OVER
 
+    # Boss 關卡畫面判斷
     elif game_state == STATE_BOSS_LEVEL:
         game_time_elapsed += dt
-        #print(final_player_score)
         player1.update_movement(None, None, None, None, effect_manager, dt, boss_enemy, boss_enemy.projectiles,
                                 throwable_objects_group)
         player2.update_movement(None, None, None, None, effect_manager, dt, boss_enemy, boss_enemy.projectiles,
@@ -1916,13 +1929,13 @@ while running: #
         player2.update_boss_interactions(dt)
 
         if boss_enemy:
-            if boss_enemy.current_health > boss_enemy.max_health / 2: #
+            if boss_enemy.current_health > boss_enemy.max_health / 2:
                 if not boss_music_playing:
-                    fade_out_and_switch_music(None, BOSS_MUSIC, fade_duration=0) #
+                    fade_out_and_switch_music(None, BOSS_MUSIC, fade_duration=0)
                     boss_music_playing = True
                 final_battle_music_started = False
-            elif not final_battle_music_started and boss_enemy.current_health <= boss_enemy.max_health / 2: #
-                fade_out_and_switch_music(BOSS_MUSIC, FINAL_BATTLE_MUSIC, fade_duration=2) #
+            elif not final_battle_music_started and boss_enemy.current_health <= boss_enemy.max_health / 2:
+                fade_out_and_switch_music(BOSS_MUSIC, FINAL_BATTLE_MUSIC, fade_duration=2)
                 final_battle_music_started = True
                 boss_music_playing = False
 
@@ -1964,47 +1977,48 @@ while running: #
 
         for _ in range(CHAIN_ITERATIONS): # Chain logic for boss level
             if player1.is_alive and player2.is_alive:
-                p1_pos_vec = player1.pos;
-                p2_pos_vec = player2.pos;
-                delta = p2_pos_vec - p1_pos_vec;
+                p1_pos_vec = player1.pos
+                p2_pos_vec = player2.pos
+                delta = p2_pos_vec - p1_pos_vec
                 distance = delta.length()
                 if distance > CHAIN_MAX_LENGTH and distance != 0:
-                    diff = (distance - CHAIN_MAX_LENGTH) / distance;
-                    p1_new_pos = player1.pos + delta * 0.5 * diff;
+                    diff = (distance - CHAIN_MAX_LENGTH) / distance
+                    p1_new_pos = player1.pos + delta * 0.5 * diff
                     p2_new_pos = player2.pos - delta * 0.5 * diff
                     player1.pos.x = max(player1.rect.width // 2,
-                                        min(p1_new_pos.x, SCREEN_WIDTH - player1.rect.width // 2));
+                                        min(p1_new_pos.x, SCREEN_WIDTH - player1.rect.width // 2))
                     player1.pos.y = max(player1.rect.height // 2,
                                         min(p1_new_pos.y, SCREEN_HEIGHT - player1.rect.height // 2))
                     player2.pos.x = max(player2.rect.width // 2,
-                                        min(p2_new_pos.x, SCREEN_WIDTH - player2.rect.width // 2));
+                                        min(p2_new_pos.x, SCREEN_WIDTH - player2.rect.width // 2))
                     player2.pos.y = max(player2.rect.height // 2,
                                         min(p2_new_pos.y, SCREEN_HEIGHT - player2.rect.height // 2))
-                    player1.rect.center = player1.pos;
+                    player1.rect.center = player1.pos
                     player2.rect.center = player2.pos
             elif player1.is_alive and not player2.is_alive and player2.death_pos:
-                delta = player2.death_pos - player1.pos;
+                delta = player2.death_pos - player1.pos
                 distance = delta.length()
                 if distance > CHAIN_MAX_LENGTH and distance != 0:
-                    diff_factor = (distance - CHAIN_MAX_LENGTH) / distance;
+                    diff_factor = (distance - CHAIN_MAX_LENGTH) / distance
                     p1_new_pos = player1.pos + delta * diff_factor
                     player1.pos.x = max(player1.rect.width // 2,
-                                        min(p1_new_pos.x, SCREEN_WIDTH - player1.rect.width // 2));
+                                        min(p1_new_pos.x, SCREEN_WIDTH - player1.rect.width // 2))
                     player1.pos.y = max(player1.rect.height // 2,
-                                        min(p1_new_pos.y, SCREEN_HEIGHT - player1.rect.height // 2));
+                                        min(p1_new_pos.y, SCREEN_HEIGHT - player1.rect.height // 2))
                     player1.rect.center = player1.pos
             elif player2.is_alive and not player1.is_alive and player1.death_pos:
-                delta = player1.death_pos - player2.pos;
+                delta = player1.death_pos - player2.pos
                 distance = delta.length()
                 if distance > CHAIN_MAX_LENGTH and distance != 0:
-                    diff_factor = (distance - CHAIN_MAX_LENGTH) / distance;
+                    diff_factor = (distance - CHAIN_MAX_LENGTH) / distance
                     p2_new_pos = player2.pos + delta * diff_factor
                     player2.pos.x = max(player2.rect.width // 2,
-                                        min(p2_new_pos.x, SCREEN_WIDTH - player2.rect.width // 2));
+                                        min(p2_new_pos.x, SCREEN_WIDTH - player2.rect.width // 2))
                     player2.pos.y = max(player2.rect.height // 2,
-                                        min(p2_new_pos.y, SCREEN_HEIGHT - player2.rect.height // 2));
+                                        min(p2_new_pos.y, SCREEN_HEIGHT - player2.rect.height // 2))
                     player2.rect.center = player2.pos
 
+    # Boss 被擊敗過場
     elif game_state == STATE_BOSS_DEFEATED:
         # 玩家可自由移動，並檢查兩位玩家是否都在 boss_defeated_area_rect 上
         player1.update_movement(None, None, None, None, effect_manager, dt)
@@ -2069,6 +2083,7 @@ while running: #
             if p1_in and p2_in:
                 game_state = STATE_ASK_CAMERA
 
+    # 拍照輸入名稱
     elif game_state == STATE_CAMERA_INPUT:
         if camera_capture_active and not player_name_input_active and not post_capture_prompt_active:
             process_camera_frame()
@@ -2085,8 +2100,8 @@ while running: #
 
     last_game_state = game_state
 
+    # --- 整體畫面繪製 ---
     screen.fill(BLACK)
-
     # --- 平鋪 floor.png 作為背景 ---
     if (
         (game_state == STATE_PLAYING and current_level_index in [0, 1, 2]) or
@@ -2099,29 +2114,29 @@ while running: #
                 screen.blit(floor_tile, (x, y))
 
     if game_state == STATE_PLAYING or (game_state == STATE_PAUSED and state_before_pause == STATE_PLAYING):
-        current_lw_alpha = effect_manager.get_laser_wall_alpha() #
-        for wall_sprite in laser_wall_sprites: #
-            if hasattr(wall_sprite, 'update_visuals'): wall_sprite.update_visuals(current_lw_alpha) #
-        laser_wall_sprites.draw(screen) #
-        # goal_sprites.draw(screen) # 這一行是多餘的，下面的迴圈已經處理了
-        for goal_sprite in goal_sprites: goal_sprite.draw(screen) #
-        for coop_box_item in coop_box_group: coop_box_item.draw(screen) #
+        current_lw_alpha = effect_manager.get_laser_wall_alpha()
+        for wall_sprite in laser_wall_sprites:
+            if hasattr(wall_sprite, 'update_visuals'): wall_sprite.update_visuals(current_lw_alpha)
+        laser_wall_sprites.draw(screen)
+        for goal_sprite in goal_sprites: goal_sprite.draw(screen)
+        for coop_box_item in coop_box_group: coop_box_item.draw(screen)
         for spike in spike_trap_group:
-            spike.update(dt);
-            spike.draw(screen) #
-        fruit_sprites.draw(screen); #
-        warning_sprites.draw(screen); #
-        meteor_sprites.draw(screen) #
-        player_sprites.draw(screen) #
+            spike.update(dt)
+            spike.draw(screen)
+        fruit_sprites.draw(screen)
+        warning_sprites.draw(screen)
+        meteor_sprites.draw(screen)
+        player_sprites.draw(screen)
 
+    # BOSS 關卡畫面繪製
     elif game_state == STATE_BOSS_LEVEL or (game_state == STATE_PAUSED and state_before_pause == STATE_BOSS_LEVEL):
         if boss_enemy:
-            boss_enemy.draw(screen) #
-        throwable_objects_group.draw(screen) #
+            boss_enemy.draw(screen)
+        throwable_objects_group.draw(screen)
         if player1.held_object:
-            player1.held_object.draw(screen) #
+            player1.held_object.draw(screen)
         if boss_enemy and hasattr(boss_enemy, 'projectiles'): boss_enemy.projectiles.draw(screen) # Draw projectiles #
-        player_sprites.draw(screen) #
+        player_sprites.draw(screen)
 
     # 新增：在 BOSS_DEFEATED 狀態下繪製正方形區域
     if game_state == STATE_BOSS_DEFEATED:
@@ -2138,71 +2153,75 @@ while running: #
 
     if game_state in [STATE_PLAYING, STATE_BOSS_LEVEL, STATE_GAME_OVER, STATE_BOSS_DEFEATED] or \
             (game_state == STATE_PAUSED and state_before_pause in [STATE_PLAYING, STATE_BOSS_LEVEL]):
-        draw_game_state_messages() #
+        draw_game_state_messages()
 
-    if game_state == STATE_START_SCREEN: #
+    if game_state == STATE_START_SCREEN:
         screen.blit(default_menu_background, (0, 0))  # Draw the background image
-        title_text = font_large.render("雙人合作遊戲 Demo", True, TEXT_COLOR); #
+        title_text = font_large.render("雙人合作遊戲 Demo", True, TEXT_COLOR);
         screen.blit(title_text,
                     (SCREEN_WIDTH // 2 - title_text.get_width() // 2, SCREEN_HEIGHT // 4 - 30)) # Adjusted Y #
 
-        for i, option_text in enumerate(start_menu_options): #
-            color = MENU_SELECTED_OPTION_COLOR if i == start_menu_selected_index else MENU_OPTION_COLOR #
-            text_surf = font_menu.render(option_text, True, color) #
-            menu_height = len(start_menu_options) * 70 #
-            base_y = SCREEN_HEIGHT // 2 - menu_height // 2 + 100 #
-            text_rect = text_surf.get_rect(center=(SCREEN_WIDTH // 2, base_y + i * 70)) #
-            screen.blit(text_surf, text_rect) #
+        for i, option_text in enumerate(start_menu_options):
+            color = MENU_SELECTED_OPTION_COLOR if i == start_menu_selected_index else MENU_OPTION_COLOR
+            text_surf = font_menu.render(option_text, True, color)
+            menu_height = len(start_menu_options) * 70
+            base_y = SCREEN_HEIGHT // 2 - menu_height // 2 + 100
+            text_rect = text_surf.get_rect(center=(SCREEN_WIDTH // 2, base_y + i * 70))
+            screen.blit(text_surf, text_rect)
 
-    elif game_state == STATE_LEVEL_SELECT: # NEW #
-        draw_level_select_menu() #
+    # 化選擇菜單
+    elif game_state == STATE_LEVEL_SELECT:
+        draw_level_select_menu()
 
-    elif game_state == STATE_PAUSED: # NEW #
-        draw_pause_menu() #
+    # --- 畫暫停 ---
+    elif game_state == STATE_PAUSED:
+        draw_pause_menu()
 
-    elif game_state == STATE_ASK_CAMERA: #
-        ask_text = font_small.render("啟用攝影機擷取頭像? (Y / N)", True, TEXT_COLOR) #
-        screen.blit(ask_text, (SCREEN_WIDTH // 2 - ask_text.get_width() // 2, SCREEN_HEIGHT // 2 - 20)) #
+    # 拍照提示文字
+    elif game_state == STATE_ASK_CAMERA:
+        ask_text = font_small.render("啟用攝影機擷取頭像? (Y / N)", True, TEXT_COLOR)
+        screen.blit(ask_text, (SCREEN_WIDTH // 2 - ask_text.get_width() // 2, SCREEN_HEIGHT // 2 - 20))
 
+    # 拍照提示文字
     elif game_state == STATE_CAMERA_INPUT:
-        base_y_offset = SCREEN_HEIGHT // 2 - 200 #
-        if player_name_input_active: #
-            name_prompt_text = font_small.render("請輸入隊伍/玩家名 (Enter 確認):", True, TEXT_COLOR) #
-            screen.blit(name_prompt_text, (SCREEN_WIDTH // 2 - name_prompt_text.get_width() // 2, base_y_offset)) #
-            name_field_rect = pygame.Rect(SCREEN_WIDTH // 2 - 150, base_y_offset + 40, 300, 40) #
-            pygame.draw.rect(screen, WHITE, name_field_rect, 2) #
-            name_input_surf = font_small.render(current_player_name, True, WHITE) #
+        base_y_offset = SCREEN_HEIGHT // 2 - 200
+        if player_name_input_active:
+            name_prompt_text = font_small.render("請輸入隊伍/玩家名 (Enter 確認):", True, TEXT_COLOR)
+            screen.blit(name_prompt_text, (SCREEN_WIDTH // 2 - name_prompt_text.get_width() // 2, base_y_offset))
+            name_field_rect = pygame.Rect(SCREEN_WIDTH // 2 - 150, base_y_offset + 40, 300, 40)
+            pygame.draw.rect(screen, WHITE, name_field_rect, 2)
+            name_input_surf = font_small.render(current_player_name, True, WHITE)
             screen.blit(name_input_surf, (name_field_rect.x + 5, name_field_rect.y + (
-                        name_field_rect.height - name_input_surf.get_height()) // 2)) #
+                        name_field_rect.height - name_input_surf.get_height()) // 2))
             if pygame.time.get_ticks() % 1000 < 500: # Cursor blink #
-                cursor_x = name_field_rect.x + 5 + name_input_surf.get_width() #
-                if cursor_x < name_field_rect.right - 5: #
+                cursor_x = name_field_rect.x + 5 + name_input_surf.get_width()
+                if cursor_x < name_field_rect.right - 5:
                     pygame.draw.line(screen, WHITE, (cursor_x, name_field_rect.y + 5),
-                                     (cursor_x, name_field_rect.y + name_field_rect.height - 5), 2) #
+                                     (cursor_x, name_field_rect.y + name_field_rect.height - 5), 2)
         elif camera_capture_active and not post_capture_prompt_active: # Capturing phase #
             player_text = f"玩家 {current_capture_player_index + 1}" #
-            capture_title_text = font_small.render(f"{player_text} 頭像擷取", True, TEXT_COLOR) #
+            capture_title_text = font_small.render(f"{player_text} 頭像擷取", True, TEXT_COLOR)
             screen.blit(capture_title_text,
-                        (SCREEN_WIDTH // 2 - capture_title_text.get_width() // 2, base_y_offset - 40)) #
-            if camera_frame_surface: #
-                feed_x = (SCREEN_WIDTH - camera_frame_surface.get_width()) // 2 #
-                feed_y = base_y_offset #
-                screen.blit(camera_frame_surface, (feed_x, feed_y)) #
+                        (SCREEN_WIDTH // 2 - capture_title_text.get_width() // 2, base_y_offset - 40))
+            if camera_frame_surface:
+                feed_x = (SCREEN_WIDTH - camera_frame_surface.get_width()) // 2
+                feed_y = base_y_offset
+                screen.blit(camera_frame_surface, (feed_x, feed_y))
             else: #
-                init_cam_text = font_small.render("正在初始化攝影機...", True, TEXT_COLOR) #
+                init_cam_text = font_small.render("正在初始化攝影機...", True, TEXT_COLOR)
                 screen.blit(init_cam_text,
-                            (SCREEN_WIDTH // 2 - init_cam_text.get_width() // 2, SCREEN_HEIGHT // 2 - 20)) #
-            prompt_str = f"對準鏡頭: (A)擷取{player_text} / (S)略過{player_text} / (Q)完成並到排行榜" #
-            capture_prompt_surf = font_tiny.render(prompt_str, True, TEXT_COLOR) #
+                            (SCREEN_WIDTH // 2 - init_cam_text.get_width() // 2, SCREEN_HEIGHT // 2 - 20))
+            prompt_str = f"對準鏡頭: (A)擷取{player_text} / (S)略過{player_text} / (Q)完成並到排行榜"
+            capture_prompt_surf = font_tiny.render(prompt_str, True, TEXT_COLOR)
             screen.blit(capture_prompt_surf,
-                        (SCREEN_WIDTH // 2 - capture_prompt_surf.get_width() // 2, SCREEN_HEIGHT - 70)) #
+                        (SCREEN_WIDTH // 2 - capture_prompt_surf.get_width() // 2, SCREEN_HEIGHT - 70))
         elif post_capture_prompt_active: # Post capture/skip options for current player #
-            player_text = f"玩家 {current_capture_player_index + 1}" #
+            player_text = f"玩家 {current_capture_player_index + 1}"
             status_text_str = "" #
             if current_capture_player_index == 0: #
-                status_text_str = "照片已儲存!" if captured_face_image_path_p1 else "照片已略過。" #
+                status_text_str = "照片已儲存!" if captured_face_image_path_p1 else "照片已略過。"
             else: # P2 #
-                status_text_str = "照片已儲存!" if captured_face_image_path_p2 else "照片已略過。" #
+                status_text_str = "照片已儲存!" if captured_face_image_path_p2 else "照片已略過。"
             status_surf = font_small.render(f"{player_text}: {status_text_str}", True, (0, 255, 0) if (
                                                                                                                   current_capture_player_index == 0 and captured_face_image_path_p1) or (
                                                                                                                   current_capture_player_index == 1 and captured_face_image_path_p2) else TEXT_COLOR) #
@@ -2210,101 +2229,103 @@ while running: #
                         (SCREEN_WIDTH // 2 - status_surf.get_width() // 2, base_y_offset + 50)) # Match y-level #
             options_y_start = base_y_offset + 100 # options below status text #
             if current_capture_player_index == 0: # P1 options #
-                opt_str1 = f"(R)重拍{player_text}" #
-                opt_str2 = "(N)擷取玩家2頭像" #
-                opt_str3 = "(F)完成 (僅儲存目前結果)" #
+                opt_str1 = f"(R)重拍{player_text}"
+                opt_str2 = "(N)擷取玩家2頭像"
+                opt_str3 = "(F)完成 (僅儲存目前結果)"
                 screen.blit(font_tiny.render(opt_str1, True, TEXT_COLOR),
                             (SCREEN_WIDTH // 2 - font_tiny.render(opt_str1, True, TEXT_COLOR).get_width() // 2,
-                             options_y_start)) #
+                             options_y_start))
                 screen.blit(font_tiny.render(opt_str2, True, TEXT_COLOR),
                             (SCREEN_WIDTH // 2 - font_tiny.render(opt_str2, True, TEXT_COLOR).get_width() // 2,
-                             options_y_start + 30)) #
+                             options_y_start + 30))
                 screen.blit(font_tiny.render(opt_str3, True, TEXT_COLOR),
                             (SCREEN_WIDTH // 2 - font_tiny.render(opt_str3, True, TEXT_COLOR).get_width() // 2,
-                             options_y_start + 60)) #
+                             options_y_start + 60))
             else: # P2 options #
-                opt_str1 = f"(R)重拍{player_text}" #
-                opt_str2 = "(B)返回玩家1選項" #
-                opt_str3 = "(F)完成並儲存" #
+                opt_str1 = f"(R)重拍{player_text}"
+                opt_str2 = "(B)返回玩家1選項"
+                opt_str3 = "(F)完成並儲存"
                 screen.blit(font_tiny.render(opt_str1, True, TEXT_COLOR),
                             (SCREEN_WIDTH // 2 - font_tiny.render(opt_str1, True, TEXT_COLOR).get_width() // 2,
-                             options_y_start)) #
+                             options_y_start))
                 screen.blit(font_tiny.render(opt_str2, True, TEXT_COLOR),
                             (SCREEN_WIDTH // 2 - font_tiny.render(opt_str2, True, TEXT_COLOR).get_width() // 2,
-                             options_y_start + 30)) #
+                             options_y_start + 30))
                 screen.blit(font_tiny.render(opt_str3, True, TEXT_COLOR),
                             (SCREEN_WIDTH // 2 - font_tiny.render(opt_str3, True, TEXT_COLOR).get_width() // 2,
-                             options_y_start + 60)) #
+                             options_y_start + 60))
 
-    elif game_state == STATE_SHOW_LEADERBOARD: #
-        draw_leaderboard_screen() #
+    elif game_state == STATE_SHOW_LEADERBOARD:
+        draw_leaderboard_screen()
 
-    if game_state == STATE_PLAYING or game_state == STATE_BOSS_LEVEL: #
-        current_revive_initiator = None; #
-        potential_target_player = None # #
-        if player1.is_alive and not player2.is_alive and player2.death_pos: # #
-            if player1.pos.distance_to(player2.death_pos) <= REVIVAL_RADIUS: # #
-                if keys[REVIVE_KEYP1]: current_revive_initiator = player1; potential_target_player = player2; # #
-        elif player2.is_alive and not player1.is_alive and player1.death_pos: # #
-            if player2.pos.distance_to(player1.death_pos) <= REVIVAL_RADIUS: # #
-                if keys[REVIVE_KEYP2]: current_revive_initiator = player2; potential_target_player = player1; # #
+    # 復活判斷
+    if game_state == STATE_PLAYING or game_state == STATE_BOSS_LEVEL:
+        current_revive_initiator = None
+        potential_target_player = None #
+        if player1.is_alive and not player2.is_alive and player2.death_pos:
+            if player1.pos.distance_to(player2.death_pos) <= REVIVAL_RADIUS:
+                if keys[REVIVE_KEYP1]: current_revive_initiator = player1; potential_target_player = player2
+        elif player2.is_alive and not player1.is_alive and player1.death_pos:
+            if player2.pos.distance_to(player1.death_pos) <= REVIVAL_RADIUS:
+                if keys[REVIVE_KEYP2]: current_revive_initiator = player2; potential_target_player = player1
 
-        if current_revive_initiator and potential_target_player: #
-            if revive_target != potential_target_player: revive_target = potential_target_player; revive_progress = 0 # #
-            revive_progress += dt # #
+        if current_revive_initiator and potential_target_player:
+            if revive_target != potential_target_player: revive_target = potential_target_player; revive_progress = 0
+            revive_progress += dt
         else: # Logic to reset progress if key is released or conditions change #
             reset_progress_flag = True #
             if revive_target == player2 and keys[
                 REVIVE_KEYP1] and player1.is_alive and player2.death_pos and player1.pos.distance_to(
-                    player2.death_pos) <= REVIVAL_RADIUS: #
-                reset_progress_flag = False #
+                    player2.death_pos) <= REVIVAL_RADIUS:
+                reset_progress_flag = False
             if revive_target == player1 and keys[
                 REVIVE_KEYP2] and player2.is_alive and player1.death_pos and player2.pos.distance_to(
-                    player1.death_pos) <= REVIVAL_RADIUS: #
-                reset_progress_flag = False #
-            if reset_progress_flag: #
-                revive_progress = 0 #
+                    player1.death_pos) <= REVIVAL_RADIUS:
+                reset_progress_flag = False
+            if reset_progress_flag:
+                revive_progress = 0
 
-        if revive_progress >= REVIVE_HOLD_TIME and revive_target is not None: # #
-            if revive_target == player2: #
-                player2.revive() # #
-            elif revive_target == player1: #
-                player1.revive() # #
-            revive_progress = 0; #
-            revive_target = None # #
+        if revive_progress >= REVIVE_HOLD_TIME and revive_target is not None:
+            if revive_target == player2:
+                player2.revive()
+            elif revive_target == player1:
+                player1.revive()
+            revive_progress = 0
+            revive_target = None
 
-        if revive_target is not None and revive_progress > 0: # #
-            percentage = min(revive_progress / REVIVE_HOLD_TIME, 1.0); #
-            center_pos_death = None # #
-            if revive_target == player1 and player1.death_pos: #
-                center_pos_death = player1.death_pos # #
-            elif revive_target == player2 and player2.death_pos: #
-                center_pos_death = player2.death_pos # #
-            if center_pos_death: #
-                radius = 20; #
-                arc_rect_center_x = int(center_pos_death.x) #
+        if revive_target is not None and revive_progress > 0:
+            percentage = min(revive_progress / REVIVE_HOLD_TIME, 1.0)
+            center_pos_death = None
+            if revive_target == player1 and player1.death_pos:
+                center_pos_death = player1.death_pos
+            elif revive_target == player2 and player2.death_pos:
+                center_pos_death = player2.death_pos
+            if center_pos_death:
+                radius = 20
+                arc_rect_center_x = int(center_pos_death.x)
                 arc_rect_center_y = int(
                     center_pos_death.y - PLAYER_RADIUS - radius * 0.5) # Position above dead player #
                 arc_rect = pygame.Rect(arc_rect_center_x - radius, arc_rect_center_y - radius, radius * 2,
-                                       radius * 2) #
+                                       radius * 2)
                 pygame.draw.circle(screen, (80, 80, 80, 150) if pygame.SRCALPHA else (80, 80, 80), arc_rect.center,
-                                   radius, 2) # #
-                start_angle_rad = -math.pi / 2; #
-                end_angle_rad = start_angle_rad + (percentage * 2 * math.pi) #
+                                   radius, 2)
+                start_angle_rad = -math.pi / 2
+                end_angle_rad = start_angle_rad + (percentage * 2 * math.pi)
                 if percentage > 0.01: pygame.draw.arc(screen, REVIVE_PROMPT_COLOR, arc_rect, start_angle_rad,
-                                                      end_angle_rad, 4) #
+                                                      end_angle_rad, 4)
 
+    # 存檔提示
     if show_save_feedback:
         feedback_surface = font_tiny.render("遊戲已存檔", True, SAVE_MESSAGE_COLOR)
         feedback_rect = feedback_surface.get_rect(topright=(SCREEN_WIDTH - 10, 10))
         screen.blit(feedback_surface, feedback_rect)
 
-    # Draw a white line between player1 and player2 only during gameplay
+    #畫出鎖鏈
     if game_state in [STATE_PLAYING, STATE_BOSS_LEVEL, STATE_BOSS_DEFEATED]:
         pygame.draw.line(screen, (255, 255, 255), (player1.pos.x, player1.pos.y), (player2.pos.x, player2.pos.y), 2)
 
-    show_opencv_paint_window() #
-    pygame.display.flip() #
+    # 更新整個畫面
+    pygame.display.flip()
 
 release_camera_resources()
 pygame.quit()
