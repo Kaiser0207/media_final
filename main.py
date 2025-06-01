@@ -2043,7 +2043,7 @@ while running: #
 
     last_game_state = game_state
 
-    screen.fill(BLACK) #
+    screen.fill(BLACK) 
 
     # --- 平鋪 floor.png 作為背景 ---
     if (
