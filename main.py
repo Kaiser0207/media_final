@@ -133,6 +133,10 @@ spike_trap_img_in = pygame.image.load("spike_trap_in.png").convert_alpha() #
 floor_tile = pygame.image.load(os.path.join('plays_animation_art', 'floor.png')).convert_alpha()
 floor_tile_width, floor_tile_height = floor_tile.get_width(), floor_tile.get_height()
 
+# 新增：載入 floor_ladder.png 作為 boss_defeated_area_rect 圖像
+floor_ladder_img = pygame.image.load(os.path.join('plays_animation_art', 'floor_ladder.png')).convert_alpha()
+floor_ladder_width, floor_ladder_height = floor_ladder_img.get_width(), floor_ladder_img.get_height()
+
 # 加載支持中文的字體 (Copied from original)
 try:
     system_fonts = pygame.font.get_fonts()
@@ -2043,7 +2047,7 @@ while running: #
 
     last_game_state = game_state
 
-    screen.fill(BLACK) 
+    screen.fill(BLACK)
 
     # --- 平鋪 floor.png 作為背景 ---
     if (
@@ -2084,7 +2088,9 @@ while running: #
     # 新增：在 BOSS_DEFEATED 狀態下繪製正方形區域
     if game_state == STATE_BOSS_DEFEATED:
         if boss_defeated_area_rect:
-            pygame.draw.rect(screen, (0, 255, 0), boss_defeated_area_rect, 0)
+            # 使用 floor_ladder_img 填充 boss_defeated_area_rect 區域
+            img = pygame.transform.scale(floor_ladder_img, (boss_defeated_area_rect.width, boss_defeated_area_rect.height))
+            screen.blit(img, boss_defeated_area_rect.topleft)
             pygame.draw.rect(screen, (255, 255, 255), boss_defeated_area_rect, 4)
         player_sprites.draw(screen)
 
