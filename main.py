@@ -201,6 +201,7 @@ button_red_up_img = pygame.image.load(os.path.join('plays_animation_art', 'butto
 button_red_down_img = pygame.image.load(os.path.join('plays_animation_art', 'button_red_down.png')).convert_alpha()
 button_blue_up_img = pygame.image.load(os.path.join('plays_animation_art', 'button_blue_up.png')).convert_alpha()
 button_blue_down_img = pygame.image.load(os.path.join('plays_animation_art', 'button_blue_down.png')).convert_alpha()
+floor_ladder_img = pygame.image.load(os.path.join('plays_animation_art', 'floor_ladder.png')).convert_alpha()
 
 # 加載支持中文的字體
 try:
@@ -1440,7 +1441,7 @@ def draw_game_state_messages():
         screen.blit(victory_text, (SCREEN_WIDTH // 2 - victory_text.get_width() // 2, 10))
         # 顯示提示
         if boss_defeated_area_rect:
-            prompt_text = font_small.render("兩位玩家請一起走到綠色區域", True, (0, 255, 0))
+            prompt_text = font_small.render("兩位玩家請一起走到出口", True, (255, 255, 255))
             screen.blit(prompt_text, (SCREEN_WIDTH // 2 - prompt_text.get_width() // 2, 100))
 
     if game_state == STATE_PLAYING:
@@ -2143,10 +2144,7 @@ while running:
         if boss_defeated_area_rect:
             # 根據 player2 是否在終點區域決定顯示的圖像
             p2_in = player2.rect.colliderect(boss_defeated_area_rect)
-            if p2_in:
-                img = pygame.transform.scale(button_blue_down_img, (boss_defeated_area_rect.width, boss_defeated_area_rect.height))
-            else:
-                img = pygame.transform.scale(button_blue_up_img, (boss_defeated_area_rect.width, boss_defeated_area_rect.height))
+            img = pygame.transform.scale(floor_ladder_img, (boss_defeated_area_rect.width, boss_defeated_area_rect.height))
             screen.blit(img, boss_defeated_area_rect.topleft)
             pygame.draw.rect(screen, (255, 255, 255), boss_defeated_area_rect, 4)
         player_sprites.draw(screen)
