@@ -449,6 +449,9 @@ class Player(pygame.sprite.Sprite):
 
     def handle_draw_item_key(self, throwable_objects_group, other_player_pos,detected_shape):  # P2 (Witch)
         if self.player_id == 1 and self.is_alive and self.can_spawn_item_timer <= 0:
+            # 如果沒有偵測到形狀則不生成物件
+            if detected_shape == "None":
+                return None
             self.can_spawn_item_timer = self.item_spawn_cooldown  # Reset cooldown
             # Spawn item near P1 (other_player_pos) or a fixed spot
             spawn_x = other_player_pos.x + random.randint(-PLAYER_RADIUS * 2, PLAYER_RADIUS * 2)
@@ -461,3 +464,4 @@ class Player(pygame.sprite.Sprite):
             throwable_objects_group.add(new_obj)
             return new_obj  # Return the spawned object
         return None
+
