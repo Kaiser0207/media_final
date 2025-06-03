@@ -2155,7 +2155,7 @@ while running:
 
     if game_state == STATE_START_SCREEN:
         screen.blit(default_menu_background, (0, 0))  # Draw the background image
-        title_text = font_large.render("雙人合作遊戲 Demo", True, TEXT_COLOR);
+        title_text = font_large.render("遺跡雙生", True, TEXT_COLOR);
         screen.blit(title_text,
                     (SCREEN_WIDTH // 2 - title_text.get_width() // 2, SCREEN_HEIGHT // 4 - 30)) # Adjusted Y #
 
